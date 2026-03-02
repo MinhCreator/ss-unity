@@ -12,6 +12,8 @@ namespace SaiGame.Services
         public event Action<string> OnGetShopsFailure;
         public event Action<ShopItemsResponse> OnGetShopItemsSuccess;
         public event Action<string> OnGetShopItemsFailure;
+        public event Action<PurchaseResponse> OnPurchaseSuccess;
+        public event Action<string> OnPurchaseFailure;
 
         [Header("Auto Load Settings")]
         [SerializeField] protected bool autoLoadOnLogin = false;
@@ -341,6 +343,103 @@ namespace SaiGame.Services
                     this.OnGetShopItemsFailure?.Invoke(error);
                     if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
                         Debug.LogWarning($"<color=#66CCFF>[Shop] GetShopItems</color> → <b><color=#FF4444>onError</color></b> callback (network) | SaiShop.cs › GetShopItemsCoroutine | {error}");
+                    onError?.Invoke(error);
+                }
+            );
+        }
+
+        // ── Purchase ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Purchases an item from a shop.
+        /// Endpoint: POST /api/v1/games/{gameId}/shops/{shopId}/purchase
+        /// </summary>
+        public void PurchaseItem(
+            string shopId,
+            string shopItemId,
+            int quantity,
+            string idempotencyKey,
+            System.Action<PurchaseResponse> onSuccess = null,
+            System.Action<string> onError = null)
+        {
+            if (SaiService.Instance != null && SaiService.Instance.ShowButtonsLog)
+                Debug.Log($"<color=#FFD700><b>[Shop] ▶ Purchase Item ({shopItemId})</b></color>", gameObject);
+
+            if (SaiService.Instance == null)
+            {
+                onError?.Invoke("SaiService not found!");
+                return;
+            }
+
+            if (!SaiService.Instance.IsAuthenticated)
+            {
+                onError?.Invoke("Not authenticated! Please login first.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(shopId))
+            {
+                onError?.Invoke("shopId cannot be empty.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(shopItemId))
+            {
+                onError?.Invoke("shopItemId cannot be empty.");
+                return;
+            }
+
+            StartCoroutine(this.PurchaseItemCoroutine(shopId, shopItemId, quantity, idempotencyKey, onSuccess, onError));
+        }
+
+        private IEnumerator PurchaseItemCoroutine(
+            string shopId,
+            string shopItemId,
+            int quantity,
+            string idempotencyKey,
+            System.Action<PurchaseResponse> onSuccess,
+            System.Action<string> onError)
+        {
+            string gameId = SaiService.Instance.GameId;
+            string endpoint = $"/api/v1/games/{gameId}/shops/{shopId}/purchase";
+
+            PurchaseRequest requestBody = new PurchaseRequest
+            {
+                shop_item_id = shopItemId,
+                quantity = quantity,
+                idempotency_key = idempotencyKey
+            };
+            string json = JsonUtility.ToJson(requestBody);
+
+            yield return SaiService.Instance.PostRequest(endpoint, json,
+                response =>
+                {
+                    try
+                    {
+                        PurchaseResponse purchaseResponse = JsonUtility.FromJson<PurchaseResponse>(response);
+
+                        if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                            Debug.Log($"[Shop] Purchase successful: item={shopItemId}, qty={quantity}");
+
+                        this.OnPurchaseSuccess?.Invoke(purchaseResponse);
+                        if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                            Debug.Log("<color=#66CCFF>[Shop] PurchaseItem</color> → <b><color=#00FF88>onSuccess</color></b> callback | SaiShop.cs › PurchaseItemCoroutine");
+                        onSuccess?.Invoke(purchaseResponse);
+                    }
+                    catch (System.Exception e)
+                    {
+                        string errorMsg = $"Parse purchase response error: {e.Message}";
+                        this.OnPurchaseFailure?.Invoke(errorMsg);
+                        if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                            Debug.LogWarning($"<color=#66CCFF>[Shop] PurchaseItem</color> → <b><color=#FF4444>onError</color></b> callback (parse) | SaiShop.cs › PurchaseItemCoroutine | {errorMsg}");
+                        onError?.Invoke(errorMsg);
+                    }
+                },
+                error =>
+                {
+                    this.OnPurchaseFailure?.Invoke(error);
+                    if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                        Debug.LogWarning($"<color=#66CCFF>[Shop] PurchaseItem</color> → <b><color=#FF4444>onError</color></b> callback (network) | SaiShop.cs › PurchaseItemCoroutine | {error}");
                     onError?.Invoke(error);
                 }
             );

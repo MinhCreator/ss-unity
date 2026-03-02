@@ -24,6 +24,12 @@ namespace SaiGame.Services
         // Per-shop loading state
         private readonly HashSet<string> loadingShops = new HashSet<string>();
 
+        // Per-item purchase state
+        private readonly Dictionary<string, int> itemQuantities = new Dictionary<string, int>();
+        private readonly Dictionary<string, string> itemIdempotencyKeys = new Dictionary<string, string>();
+        private readonly Dictionary<string, bool> itemAutoRandomKey = new Dictionary<string, bool>();
+        private readonly HashSet<string> purchasingItems = new HashSet<string>();
+
         private void OnEnable()
         {
             this.saiShop = (SaiShop)target;
@@ -183,7 +189,7 @@ namespace SaiGame.Services
                 {
                     EditorGUI.indentLevel++;
                     foreach (ShopItemData item in cached.items)
-                        this.DrawShopItemSummary(item);
+                        this.DrawShopItemSummary(item, shop.id);
                     EditorGUI.indentLevel--;
                 }
             }
@@ -191,7 +197,7 @@ namespace SaiGame.Services
             EditorGUILayout.EndVertical();
         }
 
-        private void DrawShopItemSummary(ShopItemData item)
+        private void DrawShopItemSummary(ShopItemData item, string shopId)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
@@ -208,6 +214,63 @@ namespace SaiGame.Services
 
             if (!string.IsNullOrEmpty(item.available_until))
                 EditorGUILayout.LabelField($"Until: {item.available_until}");
+
+            // ── Purchase UI ───────────────────────────────────────────────────────
+            EditorGUILayout.Space(4);
+
+            // Quantity
+            if (!this.itemQuantities.ContainsKey(item.id))
+                this.itemQuantities[item.id] = 1;
+            this.itemQuantities[item.id] = EditorGUILayout.IntField("Quantity", this.itemQuantities[item.id]);
+            if (this.itemQuantities[item.id] < 1)
+                this.itemQuantities[item.id] = 1;
+
+            // Auto-random toggle
+            if (!this.itemAutoRandomKey.ContainsKey(item.id))
+                this.itemAutoRandomKey[item.id] = true;
+            this.itemAutoRandomKey[item.id] = EditorGUILayout.Toggle("Auto Idempotency Key", this.itemAutoRandomKey[item.id]);
+
+            // Idempotency key field (disabled when auto-random is ON)
+            if (!this.itemIdempotencyKeys.ContainsKey(item.id))
+                this.itemIdempotencyKeys[item.id] = string.Empty;
+            EditorGUI.BeginDisabledGroup(this.itemAutoRandomKey[item.id]);
+            this.itemIdempotencyKeys[item.id] = EditorGUILayout.TextField("Idempotency Key", this.itemIdempotencyKeys[item.id]);
+            EditorGUI.EndDisabledGroup();
+
+            // Purchase button
+            bool isPurchasing = this.purchasingItems.Contains(item.id);
+            GUI.backgroundColor = isPurchasing ? Color.gray : new Color(1f, 0.85f, 0f);
+            EditorGUI.BeginDisabledGroup(isPurchasing);
+            if (GUILayout.Button(isPurchasing ? "Purchasing..." : "Purchase", GUILayout.Height(26)))
+            {
+                string key = this.itemAutoRandomKey[item.id]
+                    ? System.Guid.NewGuid().ToString()
+                    : this.itemIdempotencyKeys[item.id];
+
+                this.purchasingItems.Add(item.id);
+                Repaint();
+
+                this.saiShop.PurchaseItem(
+                    shopId: shopId,
+                    shopItemId: item.id,
+                    quantity: this.itemQuantities[item.id],
+                    idempotencyKey: key,
+                    onSuccess: response =>
+                    {
+                        this.purchasingItems.Remove(item.id);
+                        Debug.Log($"[ShopEditor] Purchase successful: id={response.id}");
+                        Repaint();
+                    },
+                    onError: error =>
+                    {
+                        this.purchasingItems.Remove(item.id);
+                        Debug.LogError($"[ShopEditor] Purchase failed for item {item.id}: {error}");
+                        Repaint();
+                    }
+                );
+            }
+            EditorGUI.EndDisabledGroup();
+            GUI.backgroundColor = Color.white;
 
             EditorGUILayout.EndVertical();
         }

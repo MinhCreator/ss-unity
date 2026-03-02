@@ -71,4 +71,32 @@ namespace SaiGame.Services
         public int item_count;
         public string shop_id;
     }
+
+    /// <summary>
+    /// Request body for purchasing a shop item.
+    /// Endpoint: POST /api/v1/games/{gameId}/shops/{shopId}/purchase
+    /// </summary>
+    [Serializable]
+    public class PurchaseRequest
+    {
+        public string shop_item_id;
+        public int quantity;
+        public string idempotency_key;
+    }
+
+    /// <summary>
+    /// Response from a successful purchase.
+    /// </summary>
+    [Serializable]
+    public class PurchaseResponse
+    {
+        public string id;
+        public string shop_id;
+        public string shop_item_id;
+        public string player_id;
+        public int quantity;
+        public int total_price;
+        public string idempotency_key;
+        public string created_at;
+    }
 }
