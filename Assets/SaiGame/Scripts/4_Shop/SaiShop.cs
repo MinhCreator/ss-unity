@@ -17,6 +17,7 @@ namespace SaiGame.Services
 
         [Header("Auto Load Settings")]
         [SerializeField] protected bool autoLoadOnLogin = false;
+        [SerializeField] protected bool autoRefreshAfterPurchase = false;
 
         [Header("Current Shop Data")]
         [SerializeField] protected ShopResponse currentShopResponse;
@@ -29,6 +30,7 @@ namespace SaiGame.Services
 
         public ShopResponse CurrentShopResponse => this.currentShopResponse;
         public ShopItemsResponse CurrentShopItemsResponse => this.currentShopItemsResponse;
+        public bool AutoRefreshAfterPurchase => this.autoRefreshAfterPurchase;
         public bool HasShops => this.currentShopResponse != null
                                 && this.currentShopResponse.shops != null
                                 && this.currentShopResponse.shops.Length > 0;
@@ -419,12 +421,35 @@ namespace SaiGame.Services
                         PurchaseResponse purchaseResponse = JsonUtility.FromJson<PurchaseResponse>(response);
 
                         if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
-                            Debug.Log($"[Shop] Purchase successful: item={shopItemId}, qty={quantity}");
+                        {
+                            PurchaseRecord r = purchaseResponse.purchase_record;
+                            Debug.Log(
+                                $"[Shop] Purchase successful\n" +
+                                $"  id:                  {r?.id}\n" +
+                                $"  shop_id:             {r?.shop_id}\n" +
+                                $"  shop_item_id:        {r?.shop_item_id}\n" +
+                                $"  user_id:             {r?.user_id}\n" +
+                                $"  game_id:             {r?.game_id}\n" +
+                                $"  quantity:            {r?.quantity}\n" +
+                                $"  unit_price:          {r?.unit_price}\n" +
+                                $"  total_price:         {r?.total_price}\n" +
+                                $"  idempotency_key:     {r?.idempotency_key}\n" +
+                                $"  currency_item_def:   {r?.currency_item_def_id}\n" +
+                                $"  created_at:          {r?.created_at}");
+                        }
 
                         this.OnPurchaseSuccess?.Invoke(purchaseResponse);
                         if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
                             Debug.Log("<color=#66CCFF>[Shop] PurchaseItem</color> → <b><color=#00FF88>onSuccess</color></b> callback | SaiShop.cs › PurchaseItemCoroutine");
                         onSuccess?.Invoke(purchaseResponse);
+
+                        // Auto-refresh shop items after purchase
+                        if (this.autoRefreshAfterPurchase)
+                        {
+                            if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                                Debug.Log($"[Shop] Auto-refreshing items for shop {shopId}...");
+                            this.GetShopItems(shopId);
+                        }
                     }
                     catch (System.Exception e)
                     {

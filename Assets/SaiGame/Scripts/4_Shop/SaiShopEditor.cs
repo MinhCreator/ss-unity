@@ -10,6 +10,7 @@ namespace SaiGame.Services
     {
         private SaiShop saiShop;
         private SerializedProperty autoLoadOnLogin;
+        private SerializedProperty autoRefreshAfterPurchase;
         private SerializedProperty shopLimit;
         private SerializedProperty shopOffset;
 
@@ -34,6 +35,7 @@ namespace SaiGame.Services
         {
             this.saiShop = (SaiShop)target;
             this.autoLoadOnLogin = serializedObject.FindProperty("autoLoadOnLogin");
+            this.autoRefreshAfterPurchase = serializedObject.FindProperty("autoRefreshAfterPurchase");
             this.shopLimit = serializedObject.FindProperty("shopLimit");
             this.shopOffset = serializedObject.FindProperty("shopOffset");
         }
@@ -47,6 +49,7 @@ namespace SaiGame.Services
             EditorGUILayout.Space();
 
             EditorGUILayout.PropertyField(this.autoLoadOnLogin, new GUIContent("Auto Load on Login", "Automatically load shops when user logs in"));
+            EditorGUILayout.PropertyField(this.autoRefreshAfterPurchase, new GUIContent("Auto Refresh After Purchase", "Automatically reload shop items after a successful purchase"));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Pagination Settings", EditorStyles.boldLabel);
@@ -204,7 +207,7 @@ namespace SaiGame.Services
             EditorGUILayout.LabelField($"{item.display_name}", EditorStyles.boldLabel);
             EditorGUILayout.LabelField($"ID: {item.id}");
             EditorGUILayout.LabelField($"Price: {item.price}  |  Stock: {item.stock}  |  Active: {item.is_active}");
-            EditorGUILayout.LabelField($"Limit: {item.purchase_limit_type}  ({item.purchase_limit})  |  Restock: {item.restock_schedule}");
+            this.DrawPurchaseLimitInfo(item);
 
             if (!string.IsNullOrEmpty(item.description))
                 EditorGUILayout.LabelField($"Description: {item.description}");
@@ -258,7 +261,20 @@ namespace SaiGame.Services
                     onSuccess: response =>
                     {
                         this.purchasingItems.Remove(item.id);
-                        Debug.Log($"[ShopEditor] Purchase successful: id={response.id}");
+                        PurchaseRecord r = response.purchase_record;
+                        Debug.Log(
+                            $"[ShopEditor] <color=#FFD700><b>Purchase successful</b></color>\n" +
+                            $"  id:                {r?.id}\n" +
+                            $"  shop_item_id:      {r?.shop_item_id}\n" +
+                            $"  user_id:           {r?.user_id}\n" +
+                            $"  quantity:          {r?.quantity}\n" +
+                            $"  unit_price:        {r?.unit_price}\n" +
+                            $"  total_price:       {r?.total_price}\n" +
+                            $"  idempotency_key:   {r?.idempotency_key}\n" +
+                            $"  currency_item_def: {r?.currency_item_def_id}\n" +
+                            $"  created_at:        {r?.created_at}");
+                        if (this.saiShop.AutoRefreshAfterPurchase)
+                            this.LoadShopItemsForShop(shopId);
                         Repaint();
                     },
                     onError: error =>
@@ -273,6 +289,44 @@ namespace SaiGame.Services
             GUI.backgroundColor = Color.white;
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void DrawPurchaseLimitInfo(ShopItemData item)
+        {
+            GUIStyle style = new GUIStyle(EditorStyles.label);
+            style.richText = true;
+            style.fontStyle = FontStyle.Bold;
+            style.fontSize = 11;
+
+            string limitType = (item.purchase_limit_type ?? "unlimited").ToLower();
+            string restockPart = $"  <color=#888888>Restock: {item.restock_schedule}</color>";
+
+            if (limitType == "unlimited")
+            {
+                EditorGUILayout.LabelField(
+                    $"<color=#00E676>∞  UNLIMITED</color>{restockPart}",
+                    style);
+            }
+            else
+            {
+                // Scope colour: player = cyan, global = orange
+                string scopeColor = limitType == "global" ? "#FF8C00" : "#66CCFF";
+                string scopeLabel = limitType == "global" ? "GLOBAL" : "PLAYER";
+
+                // Progress colour: green → yellow → red
+                float ratio = item.purchase_limit > 0
+                    ? (float)item.purchased_count / item.purchase_limit
+                    : 0f;
+                string progressColor = ratio >= 1f ? "#FF4444" :
+                                       ratio >= 0.75f ? "#FFD700" : "#AAFFAA";
+
+                string progressBar = $"{item.purchased_count} / {item.purchase_limit}";
+                EditorGUILayout.LabelField(
+                    $"<color={scopeColor}>⬛ {scopeLabel} LIMIT</color>  " +
+                    $"<color={progressColor}><b>{progressBar}</b></color>" +
+                    restockPart,
+                    style);
+            }
         }
 
         private void LoadShops()

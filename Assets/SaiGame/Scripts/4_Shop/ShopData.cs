@@ -59,6 +59,8 @@ namespace SaiGame.Services
         public string available_until;
         public string created_at;
         public string updated_at;
+        // Only present in response when a limit type is set (player/global)
+        public int purchased_count;
     }
 
     /// <summary>
@@ -85,18 +87,31 @@ namespace SaiGame.Services
     }
 
     /// <summary>
-    /// Response from a successful purchase.
+    /// The purchase record returned inside a successful purchase response.
     /// </summary>
     [Serializable]
-    public class PurchaseResponse
+    public class PurchaseRecord
     {
         public string id;
         public string shop_id;
         public string shop_item_id;
-        public string player_id;
+        public string user_id;
+        public string game_id;
         public int quantity;
+        public int unit_price;
         public int total_price;
         public string idempotency_key;
+        public string currency_item_def_id;
         public string created_at;
+    }
+
+    /// <summary>
+    /// Top-level response from a successful purchase.
+    /// Endpoint: POST /api/v1/games/{gameId}/shops/{shopId}/purchase
+    /// </summary>
+    [Serializable]
+    public class PurchaseResponse
+    {
+        public PurchaseRecord purchase_record;
     }
 }
