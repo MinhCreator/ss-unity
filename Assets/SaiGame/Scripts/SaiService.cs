@@ -30,6 +30,7 @@ namespace SaiGame.Services
         [SerializeField] protected PlayerItem playerItem;
         [SerializeField] protected PlayerContainer playerContainer;
         [SerializeField] protected SaiShop saiShop;
+        [SerializeField] protected ChainQuest chainQuest;
 
         [Header("Server Configuration")]
         [HideInInspector][SerializeField] protected ServerEndpointOption serverEndpoint = ServerEndpointOption.LocalHttp;
@@ -96,6 +97,8 @@ namespace SaiGame.Services
         public PlayerContainer PlayerContainer => playerContainer;
 
         public SaiShop SaiShop => saiShop;
+
+        public ChainQuest ChainQuest => this.chainQuest;
 
         public SaiAuth SaiAuth => saiAuth;
 
@@ -278,6 +281,7 @@ namespace SaiGame.Services
             this.LoadPlayerItem();
             this.LoadPlayerContainer();
             this.LoadSaiShop();
+            this.LoadChainQuest();
             this.LoadGameIdFromPlayerPrefs();
             this.LoadStudioIdFromPlayerPrefs();
         }
@@ -329,6 +333,14 @@ namespace SaiGame.Services
             this.saiShop = GetComponent<SaiShop>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadSaiShop", gameObject);
+        }
+
+        protected virtual void LoadChainQuest()
+        {
+            if (this.chainQuest != null) return;
+            this.chainQuest = GetComponentInChildren<ChainQuest>();
+            if (this.showDebugLog)
+                Debug.Log(transform.name + ": LoadChainQuest", gameObject);
         }
 
 

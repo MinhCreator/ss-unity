@@ -1,5 +1,57 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4330135680898373133
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3667272808700333575}
+  - component: {fileID: 4308186167237759036}
+  m_Layer: 0
+  m_Name: Quest
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3667272808700333575
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4330135680898373133}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8277413932139228352}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4308186167237759036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4330135680898373133}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36ec70f365f23d14d8b1ec6507fddf4b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.ChainQuest
+  autoLoadOnLogin: 0
+  currentChainResponse:
+    chains: []
+    limit: 0
+    offset: 0
+    total: 0
+  chainLimit: 50
+  chainOffset: 0
 --- !u!1 &6971719431293405431
 GameObject:
   m_ObjectHideFlags: 0
@@ -35,7 +87,8 @@ Transform:
   m_LocalPosition: {x: 2.85258, y: -0, z: 2.96002}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3667272808700333575}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8686393883881292769
@@ -55,12 +108,14 @@ MonoBehaviour:
   mailbox: {fileID: 390271473075436921}
   playerItem: {fileID: 7304098766332990550}
   playerContainer: {fileID: 4769566823869136907}
-  saiShop: {fileID: 0}
+  saiShop: {fileID: 6141822644857766885}
+  chainQuest: {fileID: 4308186167237759036}
   serverEndpoint: 0
   domainOption: 0
   port: 82
   useHttps: 0
-  gameId: 9822e559-596c-4ff9-91d9-2724c1105c6e
+  gameId: f7f791bd-eb32-4e91-b260-5d6bf696ea24
+  studioId: 
   requestTimeout: 30
   showButtonsLog: 1
   showCallbackLog: 1
@@ -198,6 +253,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.SaiShop
   autoLoadOnLogin: 0
+  autoRefreshAfterPurchase: 1
   currentShopResponse:
     shops: []
     limit: 0
@@ -205,3 +261,8 @@ MonoBehaviour:
     total: 0
   shopLimit: 20
   shopOffset: 0
+  currentShopItemsResponse:
+    items: []
+    item_count: 0
+    shop_id: 
+  lastLoadedShopId: 
