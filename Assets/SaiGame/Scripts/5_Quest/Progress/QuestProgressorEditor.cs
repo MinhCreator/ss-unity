@@ -44,6 +44,7 @@ namespace SaiGame.Services
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Quest Progressor", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("This component is intended for quest debugging in the editor. Use it to start, check, and claim quests manually at runtime without writing any code.", MessageType.Info);
             EditorGUILayout.Space();
 
             EditorGUILayout.Space();
@@ -144,80 +145,91 @@ namespace SaiGame.Services
 
                     QuestPickerEntry selected = this.pickerEntries[this.selectedQuestIndex];
 
-                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
-                    GUIStyle richBold = new GUIStyle(EditorStyles.boldLabel) { richText = true };
-                    EditorGUILayout.LabelField($"<b>{selected.displayName}</b>", richBold);
-                    EditorGUILayout.LabelField($"Source: {selected.sourceLabel}");
-                    EditorGUILayout.LabelField($"Quest Def ID: {selected.questDefinitionId}");
+                    GUIStyle richStyle  = new GUIStyle(EditorStyles.label)     { richText = true };
+                    GUIStyle richBold   = new GUIStyle(EditorStyles.boldLabel)  { richText = true };
+                    GUIStyle richMini   = new GUIStyle(EditorStyles.miniLabel)  { richText = true };
+                    GUIStyle sectionHdr = new GUIStyle(EditorStyles.miniLabel)  { richText = true, fontStyle = FontStyle.Bold };
 
-                    // Extended info for DailyQuest source
+                    // ── Header: name + status badge ───────────────────────────
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(selected.displayName, richBold, GUILayout.ExpandWidth(true));
+
+                    string entryStatus = string.Empty;
+                    DailyQuestEntryData fullEntry = null;
                     if ((QuestSourceType)this.questSourceType.enumValueIndex == QuestSourceType.DailyQuest)
                     {
                         TodayQuestResponse today = SaiService.Instance?.DailyQuest?.CurrentTodayQuestResponse;
                         if (today?.entries != null)
                         {
-                            DailyQuestEntryData fullEntry = null;
                             foreach (DailyQuestEntryData e in today.entries)
                             {
-                                if (e.quest?.id == selected.questDefinitionId)
-                                {
-                                    fullEntry = e;
-                                    break;
-                                }
+                                if (e.quest?.id == selected.questDefinitionId) { fullEntry = e; break; }
                             }
-
-                            if (fullEntry != null)
-                            {
-                                EditorGUILayout.Space(2);
-
-                                // Status
-                                if (!string.IsNullOrEmpty(fullEntry.status))
-                                {
-                                    string sc = fullEntry.status == "completed"   ? "#00FF88"
-                                              : fullEntry.status == "claimed"     ? "#FFD700"
-                                              : fullEntry.status == "in_progress" ? "#66CCFF"
-                                              : "#AAAAAA";
-                                    EditorGUILayout.LabelField($"Status: <color={sc}><b>{fullEntry.status}</b></color>", richStyle);
-                                }
-
-                                // Quest fields
-                                if (fullEntry.quest != null)
-                                {
-                                    QuestDefinitionData q = fullEntry.quest;
-                                    if (!string.IsNullOrEmpty(q.description))
-                                        EditorGUILayout.LabelField($"Description: {q.description}");
-                                    EditorGUILayout.LabelField($"Type: {q.quest_type}  |  Active: {q.is_active}  |  Sort: {q.sort_order}");
-
-                                    if (q.rewards != null && q.rewards.Length > 0)
-                                    {
-                                        EditorGUILayout.LabelField($"Rewards ({q.rewards.Length}):", EditorStyles.boldLabel);
-                                        foreach (QuestReward r in q.rewards)
-                                        {
-                                            if (r.reward_type == "coin")
-                                                EditorGUILayout.LabelField($"  • coin × {r.amount}");
-                                            else if (r.reward_type == "item")
-                                                EditorGUILayout.LabelField($"  • item {r.item_definition_id} × {r.quantity_min}–{r.quantity_max}");
-                                            else
-                                                EditorGUILayout.LabelField($"  • {r.reward_type}");
-                                        }
-                                    }
-                                }
-
-                                // Assignment fields
-                                if (fullEntry.assignment != null)
-                                {
-                                    DailyAssignmentData a = fullEntry.assignment;
-                                    EditorGUILayout.Space(2);
-                                    EditorGUILayout.LabelField("Assignment:", EditorStyles.boldLabel);
-                                    EditorGUILayout.LabelField($"  ID: {a.id}");
-                                    EditorGUILayout.LabelField($"  Assigned: {a.assigned_date}   Expires: {a.expires_at}");
-                                }
-                            }
+                            entryStatus = fullEntry?.status ?? string.Empty;
                         }
                     }
 
+                    if (!string.IsNullOrEmpty(entryStatus))
+                    {
+                        string sc = entryStatus == "completed"   ? "#00FF88"
+                                  : entryStatus == "claimed"     ? "#FFD700"
+                                  : entryStatus == "in_progress" ? "#66CCFF"
+                                  : "#AAAAAA";
+                        GUIStyle badge = new GUIStyle(EditorStyles.miniLabel) { richText = true, alignment = TextAnchor.MiddleRight };
+                        EditorGUILayout.LabelField($"<color={sc}><b>{entryStatus}</b></color>", badge, GUILayout.Width(90));
+                    }
+                    EditorGUILayout.EndHorizontal();
+
+                    EditorGUILayout.Space(2);
+
+                    // ── Identity ──────────────────────────────────────────────
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    EditorGUILayout.LabelField("IDENTITY", sectionHdr);
+                    EditorGUILayout.LabelField("Source",   selected.sourceLabel,          richStyle);
+                    EditorGUILayout.LabelField("Quest ID", selected.questDefinitionId,     richMini);
                     EditorGUILayout.EndVertical();
+
+                    // ── Quest Info (DailyQuest only) ──────────────────────────
+                    if (fullEntry?.quest != null)
+                    {
+                        QuestDefinitionData q = fullEntry.quest;
+                        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                        EditorGUILayout.LabelField("QUEST INFO", sectionHdr);
+                        EditorGUILayout.LabelField("Type",        q.quest_type,                richStyle);
+                        EditorGUILayout.LabelField("Active",      q.is_active ? "Yes" : "No",  richStyle);
+                        if (!string.IsNullOrEmpty(q.description))
+                            EditorGUILayout.LabelField("Description", q.description,            richStyle);
+                        EditorGUILayout.EndVertical();
+
+                        // ── Rewards ───────────────────────────────────────────
+                        if (q.rewards != null && q.rewards.Length > 0)
+                        {
+                            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                            EditorGUILayout.LabelField($"REWARDS  ({q.rewards.Length})", sectionHdr);
+                            foreach (QuestReward r in q.rewards)
+                            {
+                                if (r.reward_type == "coin")
+                                    EditorGUILayout.LabelField($"<color=#FFD700>coin</color> × <b>{r.amount}</b>", richStyle);
+                                else if (r.reward_type == "item")
+                                    EditorGUILayout.LabelField($"<color=#66CCFF>item</color>  {r.item_definition_id}  × <b>{r.quantity_min}–{r.quantity_max}</b>", richMini);
+                                else
+                                    EditorGUILayout.LabelField($"• {r.reward_type}", richStyle);
+                            }
+                            EditorGUILayout.EndVertical();
+                        }
+                    }
+
+                    // ── Assignment (DailyQuest only) ──────────────────────────
+                    if (fullEntry?.assignment != null)
+                    {
+                        DailyAssignmentData a = fullEntry.assignment;
+                        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                        EditorGUILayout.LabelField("ASSIGNMENT", sectionHdr);
+                        EditorGUILayout.LabelField("ID",       a.id,           richMini);
+                        EditorGUILayout.LabelField("Assigned", a.assigned_date, richStyle);
+                        EditorGUILayout.LabelField("Expires",  $"<color=#FF8888>{a.expires_at}</color>", richStyle);
+                        EditorGUILayout.EndVertical();
+                    }
 
                     EditorGUILayout.Space(4);
 
