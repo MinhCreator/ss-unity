@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3667272808700333575}
+  - component: {fileID: 1733594213501630859}
   - component: {fileID: 4308186167237759036}
   m_Layer: 0
   m_Name: Quest
@@ -32,6 +33,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8277413932139228352}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1733594213501630859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4330135680898373133}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a39f709729bc4224ea2b8b948b695f77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.QuestProgressor
+  questSourceType: 0
+  lastStartedQuest:
+    id: 
+    studio_id: 
+    game_id: 
+    user_id: 
+    quest_definition_id: 
+    status: 
+    version: 0
+    created_at: 
+    updated_at: 
 --- !u!114 &4308186167237759036
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110,6 +134,7 @@ MonoBehaviour:
   playerContainer: {fileID: 4769566823869136907}
   saiShop: {fileID: 6141822644857766885}
   chainQuest: {fileID: 4308186167237759036}
+  questProgressor: {fileID: 1733594213501630859}
   serverEndpoint: 0
   domainOption: 0
   port: 82

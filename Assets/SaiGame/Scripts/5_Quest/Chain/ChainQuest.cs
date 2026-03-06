@@ -265,6 +265,25 @@ namespace SaiGame.Services
         public int GetChainLimit() => this.chainLimit;
         public int GetChainOffset() => this.chainOffset;
 
+        // ── Runtime members cache (filled by editor or runtime calls) ──────────
+
+        private readonly System.Collections.Generic.Dictionary<string, ChainMembersResponse> runtimeMembersCache
+            = new System.Collections.Generic.Dictionary<string, ChainMembersResponse>();
+
+        /// <summary>Returns the cached members response for the given chainId, or null if not loaded.</summary>
+        public ChainMembersResponse GetCachedMembers(string chainId)
+        {
+            if (this.runtimeMembersCache.TryGetValue(chainId, out ChainMembersResponse cached))
+                return cached;
+            return null;
+        }
+
+        /// <summary>Stores a members response into the runtime cache (called after GetChainMembers succeeds).</summary>
+        public void CacheMembers(string chainId, ChainMembersResponse response)
+        {
+            this.runtimeMembersCache[chainId] = response;
+        }
+
         // ── Chain Members ──────────────────────────────────────────────────────
 
         /// <summary>
@@ -314,6 +333,7 @@ namespace SaiGame.Services
                     try
                     {
                         ChainMembersResponse membersResponse = JsonUtility.FromJson<ChainMembersResponse>(response);
+                        this.CacheMembers(chainId, membersResponse);
 
                         if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                             Debug.Log($"[ChainQuest] Chain members loaded: {membersResponse.members?.Length ?? 0} members");
