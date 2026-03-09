@@ -30,6 +30,7 @@ namespace SaiGame.Services
         [SerializeField] protected PlayerItem playerItem;
         [SerializeField] protected PlayerContainer playerContainer;
         [SerializeField] protected ItemGenerator itemGenerator;
+        [SerializeField] protected EquipmentSlot equipmentSlotManager;
         [SerializeField] protected SaiShop saiShop;
         [SerializeField] protected ChainQuest chainQuest;
         [SerializeField] protected QuestProgressor questProgressor;
@@ -112,6 +113,8 @@ namespace SaiGame.Services
         public ItemGenerator ItemGenerator => itemGenerator;
 
         public SaiShop SaiShop => saiShop;
+
+        public EquipmentSlot EquipmentSlotManager => this.equipmentSlotManager;
 
         public ChainQuest ChainQuest => this.chainQuest;
 
@@ -326,6 +329,7 @@ namespace SaiGame.Services
             this.LoadPlayerItem();
             this.LoadPlayerContainer();
             this.LoadItemGenerator();
+            this.LoadEquipmentSlotManager();
             this.LoadSaiShop();
             this.LoadChainQuest();
             this.LoadQuestProgressor();
@@ -362,7 +366,7 @@ namespace SaiGame.Services
         protected virtual void LoadPlayerItem()
         {
             if (this.playerItem != null) return;
-            this.playerItem = GetComponent<PlayerItem>();
+            this.playerItem = GetComponentInChildren<PlayerItem>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadPlayerItem", gameObject);
         }
@@ -370,7 +374,7 @@ namespace SaiGame.Services
         protected virtual void LoadPlayerContainer()
         {
             if (this.playerContainer != null) return;
-            this.playerContainer = GetComponent<PlayerContainer>();
+            this.playerContainer = GetComponentInChildren<PlayerContainer>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadPlayerContainer", gameObject);
         }
@@ -378,15 +382,23 @@ namespace SaiGame.Services
         protected virtual void LoadItemGenerator()
         {
             if (this.itemGenerator != null) return;
-            this.itemGenerator = GetComponent<ItemGenerator>();
+            this.itemGenerator = GetComponentInChildren<ItemGenerator>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadItemGenerator", gameObject);
+        }
+
+        protected virtual void LoadEquipmentSlotManager()
+        {
+            if (this.equipmentSlotManager != null) return;
+            this.equipmentSlotManager = GetComponentInChildren<EquipmentSlot>();
+            if (this.showDebugLog)
+                Debug.Log(transform.name + ": LoadEquipmentSlotManager", gameObject);
         }
 
         protected virtual void LoadSaiShop()
         {
             if (this.saiShop != null) return;
-            this.saiShop = GetComponent<SaiShop>();
+            this.saiShop = GetComponentInChildren<SaiShop>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadSaiShop", gameObject);
         }
