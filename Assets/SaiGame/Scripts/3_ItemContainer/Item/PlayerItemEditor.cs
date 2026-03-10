@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,8 +16,10 @@ namespace SaiGame.Services
         private SerializedProperty categoryFilter;
 
         private bool showCurrentInventory = true;
-        private bool showItemList = true;
+        private bool showItemList = false;
         private bool showUtilityButtons = true;
+
+        private readonly Dictionary<string, bool> itemFoldouts = new Dictionary<string, bool>();
 
         // Category dropdown state (static so it persists across re-inspects)
         private static string[] cachedCategories = null;
@@ -212,19 +215,33 @@ namespace SaiGame.Services
 
         private void DrawItemSummary(InventoryItemData item)
         {
+            if (!this.itemFoldouts.ContainsKey(item.id))
+                this.itemFoldouts[item.id] = false;
+
+            string label = item.definition != null
+                ? $"{item.definition.name}  |  {item.definition.category}  ×{item.quantity}"
+                : $"{item.id}  ×{item.quantity}";
+
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField($"ID: {item.id}", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField($"Qty: {item.quantity}  |  Level: {item.level}  |  Grid: ({item.grid_x}, {item.grid_y})");
+            this.itemFoldouts[item.id] = EditorGUILayout.Foldout(this.itemFoldouts[item.id], label, true);
 
-            if (item.definition != null)
+            if (this.itemFoldouts[item.id])
             {
-                EditorGUILayout.LabelField($"Name: {item.definition.name}");
-                EditorGUILayout.LabelField($"Category: {item.definition.category}  |  Rarity: {item.definition.rarity}");
-                EditorGUILayout.LabelField($"Stackable: {item.definition.is_stackable}  |  Grid: {item.definition.grid_width}x{item.definition.grid_height}");
-            }
+                EditorGUI.indentLevel++;
+                EditorGUILayout.LabelField($"ID: {item.id}");
+                EditorGUILayout.LabelField($"Qty: {item.quantity}  |  Level: {item.level}  |  Grid: ({item.grid_x}, {item.grid_y})");
 
-            EditorGUILayout.LabelField($"Acquired: {item.acquired_at}");
+                if (item.definition != null)
+                {
+                    EditorGUILayout.LabelField($"Name: {item.definition.name}");
+                    EditorGUILayout.LabelField($"Category: {item.definition.category}  |  Rarity: {item.definition.rarity}");
+                    EditorGUILayout.LabelField($"Stackable: {item.definition.is_stackable}  |  Grid: {item.definition.grid_width}x{item.definition.grid_height}");
+                }
+
+                EditorGUILayout.LabelField($"Acquired: {item.acquired_at}");
+                EditorGUI.indentLevel--;
+            }
 
             EditorGUILayout.EndVertical();
         }
