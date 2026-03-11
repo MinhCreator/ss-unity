@@ -192,6 +192,73 @@ namespace SaiGame.Services
             return null;
         }
 
+        public void GetItemsByTag(string tagKey, System.Action<InventoryResponse> onSuccess = null, System.Action<string> onError = null)
+        {
+            if (SaiService.Instance != null && SaiService.Instance.ShowButtonsLog)
+                Debug.Log($"<color=#00FF88><b>[ItemTag] ► Get Items by Tag [{tagKey}]</b></color>", gameObject);
+
+            if (SaiService.Instance == null)
+            {
+                onError?.Invoke("SaiService not found!");
+                return;
+            }
+
+            if (!SaiService.Instance.IsAuthenticated)
+            {
+                onError?.Invoke("Not authenticated! Please login first.");
+                return;
+            }
+
+            StartCoroutine(this.GetItemsByTagCoroutine(tagKey, onSuccess, onError));
+        }
+
+        private IEnumerator GetItemsByTagCoroutine(string tagKey, System.Action<InventoryResponse> onSuccess, System.Action<string> onError)
+        {
+            string gameId = SaiService.Instance.GameId;
+            string endpoint = $"/api/v1/games/{gameId}/item-tags/{tagKey}/items";
+
+            yield return SaiService.Instance.GetRequest(endpoint,
+                response =>
+                {
+                    try
+                    {
+                        InventoryResponse parsed = JsonUtility.FromJson<InventoryResponse>(response);
+
+                        if (parsed != null)
+                        {
+                            if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                                Debug.Log($"[ItemTag] Items for tag [{tagKey}]: {parsed.total} total, {parsed.items?.Length ?? 0} returned");
+
+                            if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                                Debug.Log($"<color=#66CCFF>[ItemTag] GetItemsByTag [{tagKey}]</color> → <b><color=#00FF88>onSuccess</color></b> callback | ItemTag.cs › GetItemsByTagCoroutine | total: {parsed.total}");
+
+                            onSuccess?.Invoke(parsed);
+                        }
+                        else
+                        {
+                            string errorMsg = $"Failed to parse InventoryResponse for tag [{tagKey}]";
+                            if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                                Debug.LogWarning($"<color=#66CCFF>[ItemTag] GetItemsByTag [{tagKey}]</color> → <b><color=#FF4444>onError</color></b> callback (parse) | {errorMsg}");
+                            onError?.Invoke(errorMsg);
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        string errorMsg = $"Parse error for tag [{tagKey}]: {e.Message}";
+                        if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                            Debug.LogWarning($"<color=#66CCFF>[ItemTag] GetItemsByTag [{tagKey}]</color> → <b><color=#FF4444>onError</color></b> callback (exception) | {errorMsg}");
+                        onError?.Invoke(errorMsg);
+                    }
+                },
+                error =>
+                {
+                    if (SaiService.Instance != null && SaiService.Instance.ShowCallbackLog)
+                        Debug.LogWarning($"<color=#66CCFF>[ItemTag] GetItemsByTag [{tagKey}]</color> → <b><color=#FF4444>onError</color></b> callback (network) | {error}");
+                    onError?.Invoke(error);
+                }
+            );
+        }
+
         // Returns a tag by its tag_key from the current cached data
         public ItemTagData GetTagByKey(string tagKey)
         {

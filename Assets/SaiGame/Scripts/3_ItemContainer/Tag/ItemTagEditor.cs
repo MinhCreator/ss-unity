@@ -8,6 +8,9 @@ namespace SaiGame.Services
     public class ItemTagEditor : Editor
     {
         private readonly Dictionary<string, bool> tagFoldouts = new Dictionary<string, bool>();
+        private readonly Dictionary<string, bool> itemFoldouts = new Dictionary<string, bool>();
+        // Cached items per tag_key
+        private readonly Dictionary<string, InventoryResponse> tagItemsCache = new Dictionary<string, InventoryResponse>();
 
         public override void OnInspectorGUI()
         {
@@ -124,6 +127,80 @@ namespace SaiGame.Services
                         EditorGUILayout.TextField("Updated At", tag.updated_at ?? "");
                         EditorGUILayout.IntField("Item Count", tag.item_count);
                         GUI.enabled = true;
+
+                        // Get Items button
+                        EditorGUILayout.Space(4);
+                        string capturedKey = foldoutKey;
+                        GUI.backgroundColor = Color.green;
+                        if (GUILayout.Button($"Get Items ({foldoutKey})", GUILayout.Height(22)))
+                        {
+                            itemTag.GetItemsByTag(capturedKey,
+                                result =>
+                                {
+                                    this.tagItemsCache[capturedKey] = result;
+                                    if (SaiService.Instance == null || SaiService.Instance.ShowDebug)
+                                        Debug.Log($"[Editor] Items for [{capturedKey}]: {result.total} total");
+                                    Repaint();
+                                },
+                                error =>
+                                {
+                                    if (SaiService.Instance == null || SaiService.Instance.ShowDebug)
+                                        Debug.LogError($"[Editor] Get items for [{capturedKey}] failed: {error}");
+                                }
+                            );
+                        }
+                        GUI.backgroundColor = Color.white;
+
+                        // Show cached items for this tag
+                        if (this.tagItemsCache.TryGetValue(foldoutKey, out InventoryResponse tagItems) && tagItems?.items != null)
+                        {
+                            EditorGUILayout.Space(3);
+                            EditorGUILayout.LabelField($"Items ({tagItems.items.Length} / {tagItems.total})", EditorStyles.boldLabel);
+
+                            foreach (InventoryItemData item in tagItems.items)
+                            {
+                                string itemName = item.definition?.name ?? item.item_definition_id ?? item.id;
+                                string itemFoldoutKey = foldoutKey + "_" + item.id;
+
+                                if (!this.itemFoldouts.ContainsKey(itemFoldoutKey))
+                                    this.itemFoldouts[itemFoldoutKey] = false;
+
+                                this.itemFoldouts[itemFoldoutKey] = EditorGUILayout.Foldout(
+                                    this.itemFoldouts[itemFoldoutKey],
+                                    itemName,
+                                    true
+                                );
+
+                                if (this.itemFoldouts[itemFoldoutKey])
+                                {
+                                    EditorGUI.indentLevel++;
+                                    GUI.enabled = false;
+                                    EditorGUILayout.TextField("Id", item.id ?? "");
+                                    EditorGUILayout.TextField("Item Definition Id", item.item_definition_id ?? "");
+                                    EditorGUILayout.TextField("Container Id", item.item_container_id ?? "");
+                                    EditorGUILayout.IntField("Grid X", item.grid_x);
+                                    EditorGUILayout.IntField("Grid Y", item.grid_y);
+                                    EditorGUILayout.IntField("Quantity", item.quantity);
+                                    EditorGUILayout.IntField("Level", item.level);
+                                    EditorGUILayout.TextField("Acquired At", item.acquired_at ?? "");
+                                    EditorGUILayout.IntField("Version", item.version);
+                                    if (item.definition != null)
+                                    {
+                                        EditorGUILayout.Space(2);
+                                        EditorGUILayout.LabelField("Definition", EditorStyles.miniBoldLabel);
+                                        EditorGUILayout.TextField("Name", item.definition.name ?? "");
+                                        EditorGUILayout.TextField("Item Code", item.definition.item_code ?? "");
+                                        EditorGUILayout.TextField("Category", item.definition.category ?? "");
+                                        EditorGUILayout.TextField("Rarity", item.definition.rarity ?? "");
+                                        EditorGUILayout.Toggle("Is Stackable", item.definition.is_stackable);
+                                        EditorGUILayout.IntField("Max Stack Size", item.definition.max_stack_size);
+                                    }
+                                    GUI.enabled = true;
+                                    EditorGUI.indentLevel--;
+                                }
+                            }
+                        }
+
                         EditorGUI.indentLevel--;
                     }
                 }
