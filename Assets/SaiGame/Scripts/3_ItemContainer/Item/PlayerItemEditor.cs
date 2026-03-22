@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -20,6 +21,16 @@ namespace SaiGame.Services
         private bool showUtilityButtons = true;
 
         private readonly Dictionary<string, bool> itemFoldouts = new Dictionary<string, bool>();
+
+        // Per-item state for the in-place Update Properties form
+        private readonly Dictionary<string, string> itemPropertiesJson = new Dictionary<string, string>();
+        private readonly HashSet<string> itemsUpdating = new HashSet<string>();
+
+        // Cached reference to ItemCrafting for the Craft button on recipe items
+        private ItemCrafting craftingRef;
+
+        // Cached reference to PlayerContainer for the Gacha button on gacha_pack items
+        private PlayerContainer containerRef;
 
         // Category dropdown state (static so it persists across re-inspects)
         private static string[] cachedCategories = null;
@@ -218,32 +229,467 @@ namespace SaiGame.Services
             if (!this.itemFoldouts.ContainsKey(item.id))
                 this.itemFoldouts[item.id] = false;
 
+            bool isClientWritable = item.definition != null && item.definition.client_writable;
+            string rarityLabel = item.definition != null && !string.IsNullOrEmpty(item.definition.rarity)
+                ? $"  ★{item.definition.rarity}" : "";
+            string levelLabel = item.level > 0 ? $"  Lv.{item.level}" : "";
             string label = item.definition != null
-                ? $"{item.definition.name}  |  {item.definition.category}  ×{item.quantity}"
+                ? $"{item.definition.name}  [{item.definition.category}]{rarityLabel}{levelLabel}  ×{item.quantity}{(isClientWritable ? "  ✎" : "")}"
                 : $"{item.id}  ×{item.quantity}";
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            this.itemFoldouts[item.id] = EditorGUILayout.Foldout(this.itemFoldouts[item.id], label, true);
+            // Header row: rarity-coloured foldout + optional Recipe badge on far right
+            GUIStyle foldoutStyle = new GUIStyle(EditorStyles.foldout);
+            foldoutStyle.fontStyle = FontStyle.Bold;
+            Color rarityColor = GetRarityColor(item.definition?.rarity);
+            foldoutStyle.normal.textColor    = rarityColor;
+            foldoutStyle.onNormal.textColor  = rarityColor;
+            foldoutStyle.focused.textColor   = rarityColor;
+            foldoutStyle.onFocused.textColor = rarityColor;
+            foldoutStyle.active.textColor    = rarityColor;
+            foldoutStyle.onActive.textColor  = rarityColor;
+
+            bool isRecipeItem    = string.Equals(item.definition?.category, "recipe",     System.StringComparison.OrdinalIgnoreCase);
+            bool isGachaPackItem = string.Equals(item.definition?.category, "gacha_pack", System.StringComparison.OrdinalIgnoreCase);
+
+            EditorGUILayout.BeginHorizontal();
+            this.itemFoldouts[item.id] = EditorGUILayout.Foldout(this.itemFoldouts[item.id], label, true, foldoutStyle);
+            if (isRecipeItem)
+            {
+                GUIStyle recipeStyle = new GUIStyle(EditorStyles.miniLabel);
+                recipeStyle.fontStyle = FontStyle.Bold;
+                recipeStyle.normal.textColor = new Color(0.9f, 0.65f, 0.1f);
+                GUILayout.Label("Recipe", recipeStyle, GUILayout.ExpandWidth(false));
+            }
+            if (isGachaPackItem)
+            {
+                GUIStyle gachaStyle = new GUIStyle(EditorStyles.miniLabel);
+                gachaStyle.fontStyle = FontStyle.Bold;
+                gachaStyle.normal.textColor = new Color(0.4f, 0.8f, 1.0f);
+                GUILayout.Label("Gacha Pack", gachaStyle, GUILayout.ExpandWidth(false));
+            }
+            EditorGUILayout.EndHorizontal();
 
             if (this.itemFoldouts[item.id])
             {
                 EditorGUI.indentLevel++;
-                EditorGUILayout.LabelField($"ID: {item.id}");
-                EditorGUILayout.LabelField($"Qty: {item.quantity}  |  Level: {item.level}  |  Grid: ({item.grid_x}, {item.grid_y})");
 
+                // ── Key Stats (highlighted summary) ───────────────────────────
+                EditorGUILayout.Space(4);
+                this.DrawKeyStatsCard(item);
+                EditorGUILayout.Space(4);
+
+                // ── Item fields ──────────────────────────────────────────────
+                EditorGUILayout.LabelField("Item", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("ID",                  item.id);
+                EditorGUILayout.LabelField("Studio ID",           item.studio_id);
+                EditorGUILayout.LabelField("Game ID",             item.game_id);
+                EditorGUILayout.LabelField("User ID",             item.user_id);
+                EditorGUILayout.LabelField("Definition ID",       item.item_definition_id);
+                EditorGUILayout.LabelField("Container ID",        item.item_container_id);
+                EditorGUILayout.LabelField("Quantity",            item.quantity.ToString());
+                EditorGUILayout.LabelField("Level",               item.level.ToString());
+                EditorGUILayout.LabelField("Grid",                $"({item.grid_x}, {item.grid_y})");
+                EditorGUILayout.LabelField("Version",             item.version.ToString());
+                EditorGUILayout.LabelField("Acquired At",         item.acquired_at);
+                EditorGUILayout.LabelField("Last Modified At",    item.last_modified_at);
+
+                // ── Properties ───────────────────────────────────────────────
+                EditorGUILayout.Space(4);
+                EditorGUILayout.LabelField("Properties", EditorStyles.boldLabel);
+
+                string prettyPublic  = PrettyJson(item.public_properties);
+                string prettyPrivate = PrettyJson(item.private_properties);
+
+                EditorGUILayout.LabelField("public_properties");
+                EditorGUI.indentLevel++;
+                EditorGUILayout.SelectableLabel(prettyPublic,
+                    EditorStyles.textArea,
+                    GUILayout.MinHeight(EditorStyles.textArea.lineHeight * (CountLines(prettyPublic) + 1)));
+                EditorGUI.indentLevel--;
+
+                EditorGUILayout.LabelField("private_properties");
+                EditorGUI.indentLevel++;
+                EditorGUILayout.SelectableLabel(prettyPrivate,
+                    EditorStyles.textArea,
+                    GUILayout.MinHeight(EditorStyles.textArea.lineHeight * (CountLines(prettyPrivate) + 1)));
+                EditorGUI.indentLevel--;
+
+                // ── Definition ───────────────────────────────────────────────
                 if (item.definition != null)
                 {
-                    EditorGUILayout.LabelField($"Name: {item.definition.name}");
-                    EditorGUILayout.LabelField($"Category: {item.definition.category}  |  Rarity: {item.definition.rarity}");
-                    EditorGUILayout.LabelField($"Stackable: {item.definition.is_stackable}  |  Grid: {item.definition.grid_width}x{item.definition.grid_height}");
+                    var d = item.definition;
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.LabelField("Definition", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("Def ID",              d.id);
+                    EditorGUILayout.LabelField("Item Code",           d.item_code);
+                    EditorGUILayout.LabelField("Name",                d.name);
+                    EditorGUILayout.LabelField("Category",            d.category);
+                    EditorGUILayout.LabelField("Rarity",              d.rarity);
+                    EditorGUILayout.LabelField("Stackable",           $"{d.is_stackable}  (max {d.max_stack_size})");
+                    EditorGUILayout.LabelField("Grid Size",           $"{d.grid_width} × {d.grid_height}");
+                    EditorGUILayout.LabelField("Client Writable",     d.client_writable.ToString());
+                    EditorGUILayout.LabelField("Allow Client Qty",    d.allow_client_update_qty.ToString());
+                    EditorGUILayout.LabelField("Created By",          d.created_by);
+                    EditorGUILayout.LabelField("Created At",          d.created_at);
+                    EditorGUILayout.LabelField("Updated At",          d.updated_at);
+
+                    if (!string.IsNullOrEmpty(d.base_stats))
+                    {
+                        EditorGUILayout.LabelField("base_stats");
+                        EditorGUI.indentLevel++;
+                        string prettyStats = PrettyJson(d.base_stats);
+                        EditorGUILayout.SelectableLabel(prettyStats,
+                            EditorStyles.textArea,
+                            GUILayout.MinHeight(EditorStyles.textArea.lineHeight * (CountLines(prettyStats) + 1)));
+                        EditorGUI.indentLevel--;
+                    }
+
+                    // ── Metadata ─────────────────────────────────────────────
+                    if (d.metadata != null)
+                    {
+                        EditorGUILayout.Space(4);
+                        EditorGUILayout.LabelField("Metadata", EditorStyles.boldLabel);
+
+                        if (!string.IsNullOrEmpty(d.metadata.flavor_text))
+                            EditorGUILayout.LabelField("Flavor Text", d.metadata.flavor_text);
+
+                        if (!string.IsNullOrEmpty(d.metadata.icon))
+                            EditorGUILayout.LabelField("Icon", d.metadata.icon);
+
+                        if (!string.IsNullOrEmpty(d.metadata.gacha_pack_id))
+                            EditorGUILayout.LabelField("Gacha Pack ID", d.metadata.gacha_pack_id);
+
+                        if (d.metadata.gacha_pack_ids != null && d.metadata.gacha_pack_ids.Length > 0)
+                        {
+                            EditorGUILayout.LabelField($"Gacha Pack IDs ({d.metadata.gacha_pack_ids.Length})");
+                            EditorGUI.indentLevel++;
+                            foreach (string packId in d.metadata.gacha_pack_ids)
+                            {
+                                EditorGUILayout.BeginHorizontal();
+                                EditorGUILayout.LabelField(packId);
+                                GUI.backgroundColor = new Color(0.4f, 0.8f, 1.0f);
+                                if (GUILayout.Button("Gacha 🎰", GUILayout.Width(80), GUILayout.Height(18)))
+                                    this.DoOpenGacha(packId, item.item_container_id);
+                                GUI.backgroundColor = Color.white;
+                                EditorGUILayout.EndHorizontal();
+                            }
+                            EditorGUI.indentLevel--;
+                        }
+
+                        if (d.metadata.craft_recipe_input_ids != null && d.metadata.craft_recipe_input_ids.Length > 0)
+                        {
+                            EditorGUILayout.LabelField($"Craft Recipe Input IDs ({d.metadata.craft_recipe_input_ids.Length})");
+                            EditorGUI.indentLevel++;
+                            foreach (string recipeInputId in d.metadata.craft_recipe_input_ids)
+                            {
+                                EditorGUILayout.BeginHorizontal();
+                                EditorGUILayout.LabelField(recipeInputId);
+                                GUI.backgroundColor = new Color(0.3f, 1f, 0.5f);
+                                if (GUILayout.Button("Craft ⚒", GUILayout.Width(70), GUILayout.Height(18)))
+                                    this.DoCraft(recipeInputId);
+                                GUI.backgroundColor = Color.white;
+                                EditorGUILayout.EndHorizontal();
+                            }
+                            EditorGUI.indentLevel--;
+                        }
+                    }
                 }
 
-                EditorGUILayout.LabelField($"Acquired: {item.acquired_at}");
+                // ── Inline update form (only for client_writable items) ──────
+                if (isClientWritable)
+                {
+                    EditorGUILayout.Space(6);
+                    EditorGUILayout.LabelField("Update public_properties", EditorStyles.boldLabel);
+
+                    if (!this.itemPropertiesJson.ContainsKey(item.id))
+                        this.itemPropertiesJson[item.id] = "{\n  \"key\": \"value\"\n}";
+
+                    this.itemPropertiesJson[item.id] = EditorGUILayout.TextArea(
+                        this.itemPropertiesJson[item.id], GUILayout.MinHeight(56));
+
+                    bool isUpdating = this.itemsUpdating.Contains(item.id);
+
+                    EditorGUILayout.BeginHorizontal();
+
+                    // Beautify button
+                    GUI.backgroundColor = new Color(1f, 0.85f, 0.3f);
+                    if (GUILayout.Button("Beautify ✦", GUILayout.Height(26), GUILayout.Width(90)))
+                    {
+                        this.itemPropertiesJson[item.id] = PrettyJson(this.itemPropertiesJson[item.id]);
+                        Repaint();
+                    }
+                    GUI.backgroundColor = Color.white;
+
+                    // Update button
+                    GUI.backgroundColor = isUpdating ? Color.gray : new Color(0.4f, 1f, 0.6f);
+                    EditorGUI.BeginDisabledGroup(isUpdating);
+                    if (GUILayout.Button(isUpdating ? "Updating..." : "Update Properties", GUILayout.Height(26)))
+                    {
+                        string itemId = item.id;
+                        string json = this.itemPropertiesJson[itemId];
+                        this.itemsUpdating.Add(itemId);
+                        Repaint();
+
+                        this.itemContainer.UpdateItemProperties(
+                            itemId: itemId,
+                            propertiesJson: json,
+                            onSuccess: updated =>
+                            {
+                                this.itemsUpdating.Remove(itemId);
+                                Repaint();
+                                string id = updated != null ? updated.id : itemId;
+                                string props = updated != null ? updated.public_properties : json;
+                                Debug.Log($"[ItemContainerEditor] Updated public_properties for item {id}: {props}");
+                            },
+                            onError: err =>
+                            {
+                                this.itemsUpdating.Remove(itemId);
+                                Repaint();
+                                Debug.LogError($"[ItemContainerEditor] UpdateItemProperties failed: {err}");
+                            }
+                        );
+                    }
+                    EditorGUI.EndDisabledGroup();
+                    GUI.backgroundColor = Color.white;
+
+                    EditorGUILayout.EndHorizontal();
+                }
+
                 EditorGUI.indentLevel--;
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void DrawKeyStatsCard(InventoryItemData item)
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            GUIStyle headerStyle = new GUIStyle(EditorStyles.boldLabel);
+            headerStyle.fontSize = 11;
+            headerStyle.normal.textColor = new Color(1f, 0.84f, 0f);
+            EditorGUILayout.LabelField("✦ KEY STATS", headerStyle);
+
+            GUIStyle labelCol = new GUIStyle(EditorStyles.label);
+            labelCol.fontSize = 11;
+            labelCol.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+
+            GUIStyle valueCol = new GUIStyle(EditorStyles.boldLabel);
+            valueCol.fontSize = 11;
+
+            if (item.definition != null && !string.IsNullOrEmpty(item.definition.name))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Name:", labelCol, GUILayout.Width(90));
+                valueCol.normal.textColor = Color.white;
+                EditorGUILayout.LabelField(item.definition.name, valueCol);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (item.definition != null && !string.IsNullOrEmpty(item.definition.category))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Category:", labelCol, GUILayout.Width(90));
+                valueCol.normal.textColor = new Color(1f, 0.84f, 0f);
+                EditorGUILayout.LabelField(item.definition.category, valueCol);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (item.definition != null && !string.IsNullOrEmpty(item.definition.rarity))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Rarity:", labelCol, GUILayout.Width(90));
+                valueCol.normal.textColor = GetRarityColor(item.definition.rarity);
+                EditorGUILayout.LabelField($"★ {item.definition.rarity}", valueCol);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Quantity:", labelCol, GUILayout.Width(90));
+            valueCol.normal.textColor = new Color(0.4f, 1f, 0.9f);
+            EditorGUILayout.LabelField($"×{item.quantity}", valueCol);
+            EditorGUILayout.EndHorizontal();
+
+            if (item.level > 0)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Level:", labelCol, GUILayout.Width(90));
+                valueCol.normal.textColor = new Color(1f, 0.65f, 0.2f);
+                EditorGUILayout.LabelField($"Lv. {item.level}", valueCol);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private static Color GetRarityColor(string rarity)
+        {
+            if (string.IsNullOrEmpty(rarity)) return Color.white;
+            switch (rarity.ToLower())
+            {
+                case "legendary": return new Color(1f,    0.84f, 0f);
+                case "epic":      return new Color(0.75f, 0.3f,  1f);
+                case "rare":      return new Color(0.4f,  0.7f,  1f);
+                case "uncommon":  return new Color(0.3f,  1f,    0.5f);
+                case "common":    return new Color(0.7f,  0.7f,  0.7f);
+                default:          return Color.white;
+            }
+        }
+
+        private void DoOpenGacha(string gachaPackId, string containerId)
+        {
+            if (string.IsNullOrEmpty(gachaPackId))
+            {
+                Debug.LogError("[PlayerItemEditor] Gacha Pack ID is empty, cannot open.");
+                return;
+            }
+
+            if (SaiService.Instance == null)
+            {
+                Debug.LogError("[PlayerItemEditor] SaiService not found!");
+                return;
+            }
+
+            if (!SaiService.Instance.IsAuthenticated)
+            {
+                Debug.LogError("[PlayerItemEditor] Not authenticated!");
+                return;
+            }
+
+            if (this.containerRef == null)
+                this.containerRef = UnityEngine.Object.FindAnyObjectByType<PlayerContainer>();
+
+            if (this.containerRef == null)
+            {
+                Debug.LogError("[PlayerItemEditor] No PlayerContainer component found in scene!");
+                return;
+            }
+
+            this.containerRef.OpenGachaPack(
+                gachaPackId,
+                containerId,
+                onSuccess: response =>
+                {
+                    Debug.Log($"[PlayerItemEditor] Gacha OK. Items granted: {response.items_granted?.Length ?? 0}");
+                    this.Repaint();
+                },
+                onError: error =>
+                {
+                    Debug.LogError($"[PlayerItemEditor] Gacha failed: {error}");
+                }
+            );
+        }
+
+        private void DoCraft(string recipeId)
+        {
+            if (string.IsNullOrEmpty(recipeId))
+            {
+                Debug.LogError("[PlayerItemEditor] Recipe ID is empty, cannot craft.");
+                return;
+            }
+
+            if (SaiService.Instance == null)
+            {
+                Debug.LogError("[PlayerItemEditor] SaiService not found!");
+                return;
+            }
+
+            if (!SaiService.Instance.IsAuthenticated)
+            {
+                Debug.LogError("[PlayerItemEditor] Not authenticated!");
+                return;
+            }
+
+            if (this.craftingRef == null)
+                this.craftingRef = UnityEngine.Object.FindAnyObjectByType<ItemCrafting>();
+
+            if (this.craftingRef == null)
+            {
+                Debug.LogError("[PlayerItemEditor] No ItemCrafting component found in scene!");
+                return;
+            }
+
+            this.craftingRef.Craft(
+                recipeId,
+                onSuccess: response =>
+                {
+                    Debug.Log($"[PlayerItemEditor] Craft OK. Tx: {response.transaction_id}");
+                    this.Repaint();
+                },
+                onError: error =>
+                {
+                    Debug.LogError($"[PlayerItemEditor] Craft failed: {error}");
+                }
+            );
+        }
+
+        /// <summary>Simple JSON pretty-printer: adds newlines and indentation.</summary>
+        private static string PrettyJson(string json)
+        {
+            if (string.IsNullOrEmpty(json)) return "{}";
+
+            var sb = new System.Text.StringBuilder();
+            int indent = 0;
+            bool inString = false;
+
+            foreach (char c in json)
+            {
+                if (c == '"' && (sb.Length == 0 || sb[sb.Length - 1] != '\\'))
+                    inString = !inString;
+
+                if (inString)
+                {
+                    sb.Append(c);
+                    continue;
+                }
+
+                switch (c)
+                {
+                    case '{':
+                    case '[':
+                        sb.Append(c);
+                        sb.Append('\n');
+                        indent++;
+                        sb.Append(new string(' ', indent * 2));
+                        break;
+                    case '}':
+                    case ']':
+                        sb.Append('\n');
+                        indent--;
+                        sb.Append(new string(' ', indent * 2));
+                        sb.Append(c);
+                        break;
+                    case ',':
+                        sb.Append(c);
+                        sb.Append('\n');
+                        sb.Append(new string(' ', indent * 2));
+                        break;
+                    case ':':
+                        sb.Append(": ");
+                        break;
+                    case ' ':
+                    case '\t':
+                    case '\n':
+                    case '\r':
+                        break; // strip original whitespace
+                    default:
+                        sb.Append(c);
+                        break;
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private static int CountLines(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return 1;
+            int n = 1;
+            foreach (char c in s)
+                if (c == '\n') n++;
+            return n;
         }
 
         private void FetchCategories()

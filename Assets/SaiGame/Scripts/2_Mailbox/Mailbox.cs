@@ -43,33 +43,33 @@ namespace SaiGame.Services
         {
             if (SaiService.Instance?.SaiAuth == null) return;
 
-            SaiService.Instance.SaiAuth.OnLoginSuccess += HandleLoginSuccess;
+            SaiService.Instance.SaiAuth.OnLoginSuccess += this.HandleLoginSuccess;
         }
 
         protected virtual void RegisterLogoutListener()
         {
             if (SaiService.Instance?.SaiAuth == null) return;
 
-            SaiService.Instance.SaiAuth.OnLogoutSuccess += HandleLogoutSuccess;
+            SaiService.Instance.SaiAuth.OnLogoutSuccess += this.HandleLogoutSuccess;
         }
 
         protected virtual void OnDestroy()
         {
             if (SaiService.Instance?.SaiAuth != null)
             {
-                SaiService.Instance.SaiAuth.OnLoginSuccess -= HandleLoginSuccess;
-                SaiService.Instance.SaiAuth.OnLogoutSuccess -= HandleLogoutSuccess;
+                SaiService.Instance.SaiAuth.OnLoginSuccess -= this.HandleLoginSuccess;
+                SaiService.Instance.SaiAuth.OnLogoutSuccess -= this.HandleLogoutSuccess;
             }
         }
 
         protected virtual void HandleLoginSuccess(LoginResponse response)
         {
-            if (!autoLoadOnLogin) return;
+            if (!this.autoLoadOnLogin) return;
 
             if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                 Debug.Log("Auto-loading mailbox after successful login...");
 
-            GetMessages(
+            this.GetMessages(
                 onSuccess: mailBox =>
                 {
                     if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
@@ -88,7 +88,7 @@ namespace SaiGame.Services
             if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                 Debug.Log("[MailBox] Logout successful, clearing mailbox data...");
 
-            ClearLocalMailBox();
+            this.ClearLocalMailBox();
 
             if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                 Debug.Log("[MailBox] Mailbox data cleared successfully");
