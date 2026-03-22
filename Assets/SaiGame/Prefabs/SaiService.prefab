@@ -229,6 +229,7 @@ GameObject:
   - component: {fileID: 9128749862781184251}
   - component: {fileID: 770429900078848718}
   - component: {fileID: 7695481116977442798}
+  - component: {fileID: 3712696907917878105}
   m_Layer: 0
   m_Name: Item
   m_TagString: Untagged
@@ -405,6 +406,26 @@ MonoBehaviour:
   itemDefinitionId: 
   containerId: 
   quantity: 1
+--- !u!114 &3712696907917878105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5318073927917700422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4ef981143f99834ea48393d1367f838, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.PlayerCrafting
+  autoLoadOnLogin: 0
+  currentHistory:
+    page: 0
+    page_size: 0
+    total: 0
+    transactions: []
+  historyPage: 1
+  historyPageSize: 20
 --- !u!1 &6971719431293405431
 GameObject:
   m_ObjectHideFlags: 0
@@ -464,6 +485,7 @@ MonoBehaviour:
   playerContainer: {fileID: 4042283287993455742}
   itemPreset: {fileID: 770429900078848718}
   itemAddDeduct: {fileID: 7695481116977442798}
+  playerCrafting: {fileID: 3712696907917878105}
   itemGenerator: {fileID: 8359460651495667961}
   equipmentSlotManager: {fileID: 2893519870010327973}
   saiShop: {fileID: 7399820738238440333}
@@ -477,15 +499,15 @@ MonoBehaviour:
   domainOption: 0
   port: 82
   useHttps: 0
-  gameId: f9f21a85-2382-449c-8bac-9957016c2939
+  gameId: fb61e660-2053-4788-bb06-6e0dd2462e4d
   studioId: 
   requestTimeout: 30
   showButtonsLog: 1
   showCallbackLog: 1
   showDebugLog: 1
-  showUrlRequest: 0
-  showJsonRequest: 0
-  showJsonResponse: 0
+  showUrlRequest: 1
+  showJsonRequest: 1
+  showJsonResponse: 1
 --- !u!114 &813458455079530658
 MonoBehaviour:
   m_ObjectHideFlags: 0

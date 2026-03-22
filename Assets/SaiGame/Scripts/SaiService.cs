@@ -32,6 +32,7 @@ namespace SaiGame.Services
         [SerializeField] protected PlayerContainer playerContainer;
         [SerializeField] protected ItemPreset itemPreset;
         [SerializeField] protected ItemAddDeduct itemAddDeduct;
+        [SerializeField] protected ItemCrafting itemCrafting;
         [SerializeField] protected ItemGenerator itemGenerator;
         [SerializeField] protected EquipmentSlot equipmentSlotManager;
         [SerializeField] protected Shop saiShop;
@@ -66,9 +67,9 @@ namespace SaiGame.Services
         [SerializeField] protected bool showButtonsLog = true;
         [SerializeField] protected bool showCallbackLog = true;
         [SerializeField] protected bool showDebugLog = true;
-        [SerializeField] protected bool showUrlRequest = false;
-        [SerializeField] protected bool showJsonRequest = false;
-        [SerializeField] protected bool showJsonResponse = false;
+        [SerializeField] protected bool showUrlRequest = true;
+        [SerializeField] protected bool showJsonRequest = true;
+        [SerializeField] protected bool showJsonResponse = true;
 
         public event Action<string> OnTokenRefreshed;
 
@@ -120,6 +121,8 @@ namespace SaiGame.Services
         public ItemPreset ItemPreset => this.itemPreset;
 
         public ItemAddDeduct ItemAddDeduct => this.itemAddDeduct;
+
+        public ItemCrafting ItemCrafting => this.itemCrafting;
 
         public ItemGenerator ItemGenerator => itemGenerator;
 
@@ -377,6 +380,7 @@ namespace SaiGame.Services
             this.LoadPlayerContainer();
             this.LoadItemPreset();
             this.LoadItemAddDeduct();
+            this.LoadItemCrafting();
             this.LoadItemGenerator();
             this.LoadEquipmentSlotManager();
             this.LoadSaiShop();
@@ -460,6 +464,14 @@ namespace SaiGame.Services
             this.itemAddDeduct = GetComponentInChildren<ItemAddDeduct>();
             if (this.showDebugLog)
                 Debug.Log(transform.name + ": LoadItemAddDeduct", gameObject);
+        }
+
+        protected virtual void LoadItemCrafting()
+        {
+            if (this.itemCrafting != null) return;
+            this.itemCrafting = GetComponentInChildren<ItemCrafting>();
+            if (this.showDebugLog)
+                Debug.Log(transform.name + ": LoadItemCrafting", gameObject);
         }
 
         protected virtual void LoadItemGenerator()

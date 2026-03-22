@@ -59,7 +59,7 @@ namespace SaiGame.Services
             }
 
             // Service References foldout
-            EditorGUILayout.Space(5);
+            EditorGUILayout.Space(2);
             this.showServiceReferences = EditorGUILayout.Foldout(this.showServiceReferences, "Service References", true);
             if (this.showServiceReferences)
             {
@@ -83,6 +83,7 @@ namespace SaiGame.Services
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("itemTag"),              new GUIContent("Item Tag"));
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("itemPreset"),           new GUIContent("Item Preset"));
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("itemAddDeduct"),        new GUIContent("Item Add Deduct"));
+                EditorGUILayout.PropertyField(this.serializedObject.FindProperty("ItemCrafting"),       new GUIContent("Player Crafting"));
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("saiShop"),              new GUIContent("Sai Shop"));
 
                 // ── Quest child ──────────────────────────────────────────────

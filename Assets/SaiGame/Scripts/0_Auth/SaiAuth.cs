@@ -167,8 +167,8 @@ namespace SaiGame.Services
 
         private void StartTokenExpirationCheck()
         {
-            StopTokenExpirationCheck();
-            if (autoRefreshToken && IsAuthenticated)
+            this.StopTokenExpirationCheck();
+            if (this.autoRefreshToken && this.IsAuthenticated)
             {
                 tokenExpirationChecker = StartCoroutine(CheckTokenExpiration());
             }
@@ -185,12 +185,12 @@ namespace SaiGame.Services
 
         private IEnumerator CheckTokenExpiration()
         {
-            while (IsAuthenticated)
+            while (this.IsAuthenticated)
             {
-                float elapsedTime = Time.time - loginTime;
-                float timeUntilExpire = expiresIn - elapsedTime;
+                float elapsedTime = Time.time - this.loginTime;
+                float timeUntilExpire = this.expiresIn - elapsedTime;
 
-                if (timeUntilExpire <= refreshBeforeExpire && timeUntilExpire > 0)
+                if (timeUntilExpire <= this.refreshBeforeExpire && timeUntilExpire > 0)
                 {
                     if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                         Debug.Log($"Auto-refreshing token... (expires in {timeUntilExpire:F1}s)");
