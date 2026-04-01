@@ -154,9 +154,18 @@ namespace SaiGame.Services
 
                 // ── Session Fields ─────────────────────────────────────────────
                 EditorGUILayout.LabelField("Session", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("ID",         session.id);
-                EditorGUILayout.LabelField("Game ID",    session.game_id);
-                EditorGUILayout.LabelField("Player ID",  session.player_id);
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("ID", session.id);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = session.id;
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Game ID", session.game_id);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = session.game_id;
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Player ID", session.player_id);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = session.player_id;
+                EditorGUILayout.EndHorizontal();
                 EditorGUILayout.LabelField("Status",     session.status);
                 EditorGUILayout.LabelField("Started At", session.started_at);
                 EditorGUILayout.LabelField("Expires At", session.expires_at);
