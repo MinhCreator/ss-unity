@@ -70,6 +70,12 @@ namespace SaiGame.Services
             this.LoadCredentialsFromPlayerPrefs();
         }
 
+        protected override void ResetValue()
+        {
+            base.ResetValue();
+            this.ManualClearCredentials();
+        }
+
         protected virtual void Start()
         {
             if (this.autoLogin && !string.IsNullOrEmpty(this.username) && !string.IsNullOrEmpty(this.password))

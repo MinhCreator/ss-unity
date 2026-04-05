@@ -21,7 +21,7 @@ namespace SaiGame.Services
     [DefaultExecutionOrder(-100)]
     public class SaiService : SaiSingleton<SaiService>
     {
-        public const string PACKAGE_VERSION = "0.2.27";
+        public const string PACKAGE_VERSION = "0.2.28";
         public const string PACKAGE_NAME = "SaiGame Services";
 
         [SerializeField] protected SaiAuth saiAuth;
@@ -46,22 +46,18 @@ namespace SaiGame.Services
         [SerializeField] protected BattleScript battleScript;
 
         [Header("Server Configuration")]
-        [HideInInspector][SerializeField] protected ServerEndpointOption serverEndpoint = ServerEndpointOption.LocalHttp;
+        [HideInInspector][SerializeField] protected ServerEndpointOption serverEndpoint = ServerEndpointOption.ProductionHttps;
         [HideInInspector][SerializeField] protected DomainOption domainOption = DomainOption.Local;
         [HideInInspector][SerializeField] protected int port = 80;
         [HideInInspector][SerializeField] protected bool useHttps = false;
 
         [Header("Game Configuration")]
         [SerializeField] protected string gameId = "";
-        [SerializeField] protected string studioId = "";
-
         private const string PREF_GAME_ID = "SaiGame_GameId";
-        private const string PREF_STUDIO_ID = "SaiGame_StudioId";
         private const string PREF_SERVER_ENDPOINT = "SaiGame_ServerEndpoint";
 
         // Tracks the last value written to PlayerPrefs so we only save on actual change
         private string lastSavedGameId = null;
-        private string lastSavedStudioId = null;
 
         [Header("API Settings")]
         [SerializeField] protected int requestTimeout = 30;
@@ -151,8 +147,6 @@ namespace SaiGame.Services
         public SaiAuth SaiAuth => saiAuth;
 
         public string GameId => this.NormalizeInput(this.gameId);
-
-        public string StudioId => this.NormalizeInput(this.studioId);
 
         private string NormalizeInput(string value)
         {
@@ -372,6 +366,12 @@ namespace SaiGame.Services
             this.SyncLegacyServerFieldsFromEndpoint();
         }
 
+        protected override void ResetValue()
+        {
+            base.ResetValue();
+            this.ManualClearGameId();
+        }
+
         protected override void LoadComponents()
         {
             base.LoadComponents();
@@ -398,7 +398,6 @@ namespace SaiGame.Services
             this.LoadBattleSessions();
             this.LoadBattleScript();
             this.LoadGameIdFromPlayerPrefs();
-            this.LoadStudioIdFromPlayerPrefs();
         }
 
 
@@ -623,45 +622,6 @@ namespace SaiGame.Services
             this.SaveGameIdToPlayerPrefs();
         }
 
-        protected virtual void LoadStudioIdFromPlayerPrefs()
-        {
-            if (PlayerPrefs.HasKey(PREF_STUDIO_ID))
-            {
-                this.studioId = this.NormalizeInput(PlayerPrefs.GetString(PREF_STUDIO_ID));
-                if (this.showDebugLog)
-                    Debug.Log($"Loaded Studio ID from PlayerPrefs: {this.studioId}");
-            }
-            else
-            {
-                this.studioId = this.NormalizeInput(this.studioId);
-            }
-
-            this.lastSavedStudioId = this.studioId;
-        }
-
-        protected virtual void SaveStudioIdToPlayerPrefs()
-        {
-            this.studioId = this.NormalizeInput(this.studioId);
-            this.lastSavedStudioId = this.studioId;
-            PlayerPrefs.SetString(PREF_STUDIO_ID, this.studioId);
-            PlayerPrefs.Save();
-            if (this.showDebugLog)
-                Debug.Log($"Saved Studio ID to PlayerPrefs: {this.studioId}");
-        }
-
-        public void SetStudioId(string newStudioId)
-        {
-            this.studioId = this.NormalizeInput(newStudioId);
-            this.SaveStudioIdToPlayerPrefs();
-        }
-
-        public void ManualSaveStudioId()
-        {
-            if (this.showButtonsLog)
-                Debug.Log("<color=#00FF88><b>[SaiService] ► Save Studio ID to PlayerPrefs</b></color>", gameObject);
-            this.SaveStudioIdToPlayerPrefs();
-        }
-
         protected virtual void OnValidate()
         {
             // serverEndpoint is the source of truth; sync legacy fields from it only.
@@ -680,18 +640,6 @@ namespace SaiGame.Services
                     Debug.Log($"[SaiService] Game ID auto-saved to PlayerPrefs: {normalized}");
             }
 
-            string normalizedStudio = this.NormalizeInput(this.studioId);
-            this.studioId = normalizedStudio;
-
-            // Auto-save whenever the Studio ID value actually changes
-            if (this.lastSavedStudioId != normalizedStudio)
-            {
-                this.lastSavedStudioId = normalizedStudio;
-                PlayerPrefs.SetString(PREF_STUDIO_ID, normalizedStudio);
-                PlayerPrefs.Save();
-                if (this.showDebugLog)
-                    Debug.Log($"[SaiService] Studio ID auto-saved to PlayerPrefs: {normalizedStudio}");
-            }
         }
 
         public void ManualSaveGameId()
@@ -711,13 +659,6 @@ namespace SaiGame.Services
                 this.gameId = string.Empty;
                 if (this.showButtonsLog)
                     Debug.Log("Cleared Game ID from PlayerPrefs");
-            }
-            if (PlayerPrefs.HasKey(PREF_STUDIO_ID))
-            {
-                PlayerPrefs.DeleteKey(PREF_STUDIO_ID);
-                this.studioId = string.Empty;
-                if (this.showButtonsLog)
-                    Debug.Log("Cleared Studio ID from PlayerPrefs");
             }
             if (PlayerPrefs.HasKey(PREF_SERVER_ENDPOINT))
             {
