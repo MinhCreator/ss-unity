@@ -22,8 +22,8 @@ namespace SaiGame.Services
         [SerializeField] protected GamerProgressData currentProgress;
 
         [Header("Update Delta Values")]
-        [SerializeField] protected int experienceDelta = 100;
-        [SerializeField] protected int goldDelta = 50;
+        [SerializeField] protected int experienceDelta = 0;
+        [SerializeField] protected int goldDelta = 0;
         [SerializeField][TextArea(3, 10)] protected string gameData = "{}";
 
         public GamerProgressData CurrentProgress => currentProgress;

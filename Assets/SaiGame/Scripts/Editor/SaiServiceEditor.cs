@@ -121,7 +121,6 @@ namespace SaiGame.Services
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("Game Configuration", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(this.serializedObject.FindProperty("gameId"), new GUIContent("Game Id"));
-            EditorGUILayout.PropertyField(this.serializedObject.FindProperty("studioId"), new GUIContent("Studio Id"));
 
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("API Settings", EditorStyles.boldLabel);
