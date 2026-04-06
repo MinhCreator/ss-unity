@@ -468,6 +468,10 @@ PrefabInstance:
       propertyPath: savePassword
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1993458322055049526, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
+      propertyPath: autoLoadOnLogin
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3797376410084372741, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: goldDelta
       value: 0
@@ -534,7 +538,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: gameId
-      value: 
+      value: a52d72bc-6512-4bd3-9e2c-7471f9308387
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: useHttps

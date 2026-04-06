@@ -137,10 +137,12 @@ namespace SaiGame.Services
                     if (!string.IsNullOrEmpty(myRank.metadata) && myRank.metadata != "null")
                         EditorGUILayout.LabelField($"Metadata: {myRank.metadata}");
                     if (myRank.season != null && !string.IsNullOrEmpty(myRank.season.id))
+                    {
                         EditorGUILayout.BeginHorizontal();
                         EditorGUILayout.LabelField($"Season: #{myRank.season.season_number}  ({myRank.season.id})");
                         if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = myRank.season.id;
                         EditorGUILayout.EndHorizontal();
+                    }
                     EditorGUILayout.LabelField($"Updated: {myRank.updated_at}");
                 }
                 else

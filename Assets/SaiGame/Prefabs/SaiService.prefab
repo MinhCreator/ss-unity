@@ -528,6 +528,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.BattleScript
   scriptName: 
+  requestBody: "{\n    \"payload\": {\n\n    }\n}"
   jsonResponse: 
 --- !u!1 &6971719431293405431
 GameObject:
@@ -560,7 +561,7 @@ Transform:
   m_GameObject: {fileID: 6971719431293405431}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.85258, y: -0, z: 2.96002}
+  m_LocalPosition: {x: 0, y: -0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -601,12 +602,11 @@ MonoBehaviour:
   leaderboard: {fileID: 1993458322055049526}
   battleSessions: {fileID: 8438002230962336466}
   battleScript: {fileID: 5292617345916487666}
-  serverEndpoint: 0
-  domainOption: 0
-  port: 82
-  useHttps: 0
-  gameId: c49a3290-b9f4-4012-b32e-780cbd939797
-  studioId: 
+  serverEndpoint: 1
+  domainOption: 1
+  port: 443
+  useHttps: 1
+  gameId: a52d72bc-6512-4bd3-9e2c-7471f9308387
   requestTimeout: 30
   showButtonsLog: 1
   showCallbackLog: 1
@@ -638,13 +638,13 @@ MonoBehaviour:
     is_verified: 0
     created_at: 0
   loginTime: 0
-  autoLogin: 1
+  autoLogin: 0
   autoRefreshToken: 1
   refreshBeforeExpire: 2
-  username: username_player1_1773970252201
+  username: simonsai
   password: 123qweasd
-  saveEmail: 1
-  savePassword: 1
+  saveEmail: 0
+  savePassword: 0
   registerEmail: 
   registerUsername: 
   registerPassword: 
