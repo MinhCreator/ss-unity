@@ -232,6 +232,7 @@ GameObject:
   - component: {fileID: 3712696907917878105}
   - component: {fileID: 6379628580400705291}
   - component: {fileID: 6807877424875840272}
+  - component: {fileID: 8395767071459126564}
   m_Layer: 0
   m_Name: Item
   m_TagString: Untagged
@@ -463,6 +464,25 @@ MonoBehaviour:
   playerContainer: {fileID: 0}
   itemAId: 
   itemBId: 
+--- !u!114 &8395767071459126564
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5318073927917700422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbeff27a4370815489af958a07279ac4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaiGame.Services.GachaPack
+  gachaPackId: 
+  containerId: 
+  lastResponse:
+    is_duplicate: 0
+    items_granted: []
+    mailbox_message_id: 
+    transaction_id: 
 --- !u!1 &5574195839657187037
 GameObject:
   m_ObjectHideFlags: 0
@@ -605,11 +625,11 @@ MonoBehaviour:
   leaderboard: {fileID: 1993458322055049526}
   battleSessions: {fileID: 8438002230962336466}
   battleScript: {fileID: 5292617345916487666}
-  serverEndpoint: 0
-  domainOption: 0
-  port: 82
-  useHttps: 0
-  gameId: 
+  serverEndpoint: 1
+  domainOption: 1
+  port: 443
+  useHttps: 1
+  gameId: ab8b18d3-5a69-4fea-9dea-43a9f4c6e6d2
   requestTimeout: 30
   showButtonsLog: 1
   showCallbackLog: 1
