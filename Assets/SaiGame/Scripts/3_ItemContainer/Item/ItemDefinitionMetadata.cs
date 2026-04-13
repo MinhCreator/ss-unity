@@ -18,5 +18,9 @@ namespace SaiGame.Services
         public string[] gacha_pack_ids;
         // Recipe item: list of craft_recipe_input definition IDs this recipe unlocks
         public string[] craft_recipe_input_ids;
+        // Currency item metadata (populated when the definition represents a currency)
+        public string currency_code;
+        public string description;
+        public bool is_default_currency;
     }
 }

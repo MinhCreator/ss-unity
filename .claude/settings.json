@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Sai/.claude/projects/g--Projects-ss-sai-service-ss-unity/**)",
+      "Bash(ls \"C:\\\\\\\\Users\\\\\\\\Sai\\\\\\\\.claude\\\\\\\\projects\\\\\\\\g--Projects-ss-sai-service-ss-unity\\\\\\\\memory\\\\\\\\\")",
+      "Read(//c/Users/Sai/.claude/projects//**)"
+    ]
+  }
+}

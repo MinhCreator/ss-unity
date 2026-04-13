@@ -264,9 +264,9 @@ namespace SaiGame.Services
                 }
 
                 // Check if any output pool item matches
-                if (generator.definition != null && generator.definition.output_pool != null)
+                if (generator.output_pool != null)
                 {
-                    foreach (var output in generator.definition.output_pool)
+                    foreach (var output in generator.output_pool)
                     {
                         if (output.item_definition_id == itemCode)
                         {
@@ -530,7 +530,7 @@ namespace SaiGame.Services
                 return null;
             }
 
-            if (generator.definition == null || generator.definition.output_pool == null || generator.definition.output_pool.Length == 0)
+            if (generator.output_pool == null || generator.output_pool.Length == 0)
             {
                 if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
                     Debug.LogWarning($"[ItemGenerator] Generator has no output pool: {inventoryItemId}");
@@ -540,7 +540,7 @@ namespace SaiGame.Services
             int currentPendingTicks = generator.GetCurrentPendingUnits();
             var expectedOutputs = new System.Collections.Generic.List<GeneratorExpectedOutput>();
 
-            foreach (var output in generator.definition.output_pool)
+            foreach (var output in generator.output_pool)
             {
                 float expectedDrops = currentPendingTicks * output.drop_rate;
                 int expectedMin = Mathf.FloorToInt(expectedDrops * output.quantity_min);
