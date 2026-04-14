@@ -9,6 +9,7 @@ namespace SaiGame.Services
     public class GeneratorOutputPool
     {
         public string item_definition_id;
+        public ItemDefinitionMetadata item_definition_metadata;
         public float drop_rate;
         public int quantity_min;
         public int quantity_max;

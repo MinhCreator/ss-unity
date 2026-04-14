@@ -215,11 +215,16 @@ namespace SaiGame.Services
             labelStyle.fontSize = 10;
             labelStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
             
+            // === COLLECT DESTINATION BANNER (prominent) ===
+            // Pass raw config value (may be null/empty) so the banner can tag the default fallback.
+            this.DrawCollectDestinationBanner(generator.Config?.collect_destination);
+
             if (generator.definition != null)
             {
                 EditorGUILayout.LabelField($"CODE: {generator.definition.item_code}", labelStyle);
+                EditorGUILayout.LabelField($"GRID: {generator.definition.grid_width} × {generator.definition.grid_height}", labelStyle);
             }
-            
+
             EditorGUILayout.LabelField($"DEF: {generator.definition_id}", labelStyle);
             
             GUIStyle idStyle = new GUIStyle(EditorStyles.label);
@@ -382,27 +387,73 @@ namespace SaiGame.Services
             EditorGUILayout.Space(4);
 
             // === OUTPUT POOL (Card-based layout) ===
-            if (generator.definition != null && generator.definition.output_pool != null && generator.definition.output_pool.Length > 0)
+            if (generator.output_pool != null && generator.output_pool.Length > 0)
             {
                 GUIStyle poolHeader = new GUIStyle(EditorStyles.boldLabel);
                 poolHeader.fontSize = 11;
                 poolHeader.normal.textColor = new Color(0.7f, 0.9f, 1f);
-                EditorGUILayout.LabelField($"📤 LOOT POOL ({generator.definition.output_pool.Length})", poolHeader);
-                
+                EditorGUILayout.LabelField($"📤 LOOT POOL ({generator.output_pool.Length})", poolHeader);
+
                 EditorGUILayout.Space(3);
-                
-                foreach (var output in generator.definition.output_pool)
+
+                foreach (var output in generator.output_pool)
                 {
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    
-                    // Item Definition ID (full, no truncation)
+
+                    // Header row: item metadata (currency code + icon) when present
+                    ItemDefinitionMetadata itemMeta = output.item_definition_metadata;
+                    if (itemMeta != null && (!string.IsNullOrEmpty(itemMeta.currency_code) || !string.IsNullOrEmpty(itemMeta.icon)))
+                    {
+                        EditorGUILayout.BeginHorizontal();
+
+                        if (!string.IsNullOrEmpty(itemMeta.currency_code))
+                        {
+                            GUIStyle currencyStyle = new GUIStyle(EditorStyles.boldLabel);
+                            currencyStyle.fontSize = 11;
+                            currencyStyle.normal.textColor = new Color(1f, 0.84f, 0.2f);
+                            string defaultTag = itemMeta.is_default_currency ? "  ★ default" : "";
+                            EditorGUILayout.LabelField($"💰 {itemMeta.currency_code}{defaultTag}", currencyStyle, GUILayout.ExpandWidth(false));
+                        }
+
+                        GUILayout.FlexibleSpace();
+
+                        if (!string.IsNullOrEmpty(itemMeta.icon))
+                        {
+                            GUIStyle iconStyle = new GUIStyle(EditorStyles.label);
+                            iconStyle.fontSize = 9;
+                            iconStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+                            iconStyle.alignment = TextAnchor.MiddleRight;
+                            GUIContent iconContent = new GUIContent($"icon: {itemMeta.icon}");
+                            float iconWidth = iconStyle.CalcSize(iconContent).x;
+                            EditorGUILayout.LabelField(iconContent, iconStyle, GUILayout.Width(iconWidth));
+                        }
+
+                        EditorGUILayout.EndHorizontal();
+
+                        if (!string.IsNullOrEmpty(itemMeta.description))
+                        {
+                            GUIStyle descStyle = new GUIStyle(EditorStyles.label);
+                            descStyle.fontSize = 9;
+                            descStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
+                            descStyle.wordWrap = true;
+                            descStyle.fontStyle = FontStyle.Italic;
+                            EditorGUILayout.LabelField(itemMeta.description, descStyle);
+                        }
+
+                        EditorGUILayout.Space(2);
+                    }
+
+                    // Item Definition ID (full, no truncation) + Copy button
                     GUIStyle itemIdStyle = new GUIStyle(EditorStyles.label);
                     itemIdStyle.fontSize = 10;
                     itemIdStyle.normal.textColor = new Color(0.7f, 0.9f, 1f);
                     itemIdStyle.fontStyle = FontStyle.Bold;
                     itemIdStyle.wordWrap = false;
+                    EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.LabelField($"Item: {output.item_definition_id}", itemIdStyle);
-                    
+                    if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = output.item_definition_id;
+                    EditorGUILayout.EndHorizontal();
+
                     EditorGUILayout.Space(2);
                     
                     // Drop Rate
@@ -422,11 +473,20 @@ namespace SaiGame.Services
                     // Quantity Range
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.LabelField("Quantity:", lootLabelStyle, GUILayout.Width(80));
-                    
+
                     GUIStyle qtyStyle = new GUIStyle(EditorStyles.label);
                     qtyStyle.fontSize = 10;
                     qtyStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
                     EditorGUILayout.LabelField($"{output.quantity_min}-{output.quantity_max}", qtyStyle);
+                    EditorGUILayout.EndHorizontal();
+
+                    // Initial Output
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField("Initial:", lootLabelStyle, GUILayout.Width(80));
+                    GUIStyle initStyle = new GUIStyle(EditorStyles.label);
+                    initStyle.fontSize = 10;
+                    initStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+                    EditorGUILayout.LabelField(output.initial_output.ToString(), initStyle);
                     EditorGUILayout.EndHorizontal();
                     
                     // Expected Output Calculation
@@ -684,6 +744,58 @@ namespace SaiGame.Services
                     Repaint();
                 }
             );
+        }
+
+        private void DrawCollectDestinationBanner(string destination)
+        {
+            bool isDefaulted = string.IsNullOrEmpty(destination);
+            string dest = isDefaulted ? "mailbox" : destination.ToLower();
+
+            string icon;
+            Color bg;
+            Color fg;
+
+            switch (dest)
+            {
+                case "inventory":
+                    icon = "🎒";
+                    bg = new Color(0.15f, 0.45f, 0.85f);
+                    fg = Color.white;
+                    break;
+                case "mailbox":
+                case "mail":
+                    icon = "📬";
+                    bg = new Color(0.85f, 0.45f, 0.15f);
+                    fg = Color.white;
+                    break;
+                default:
+                    icon = "❓";
+                    bg = new Color(0.4f, 0.4f, 0.4f);
+                    fg = new Color(0.9f, 0.9f, 0.9f);
+                    break;
+            }
+
+            string label = $"{icon}  COLLECT → {dest.ToUpper()}" + (isDefaulted ? "  (default)" : "");
+
+            Rect bannerRect = EditorGUILayout.GetControlRect(false, 28);
+
+            // Shadow for depth
+            EditorGUI.DrawRect(new Rect(bannerRect.x + 1, bannerRect.y + 1, bannerRect.width, bannerRect.height), new Color(0f, 0f, 0f, 0.35f));
+            // Background
+            EditorGUI.DrawRect(bannerRect, bg);
+            // Accent stripe on the left
+            EditorGUI.DrawRect(new Rect(bannerRect.x, bannerRect.y, 4, bannerRect.height), new Color(1f, 1f, 1f, 0.65f));
+
+            GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+            labelStyle.fontSize = 13;
+            labelStyle.fontStyle = FontStyle.Bold;
+            labelStyle.alignment = TextAnchor.MiddleLeft;
+            labelStyle.normal.textColor = fg;
+            labelStyle.padding = new RectOffset(12, 8, 0, 0);
+
+            GUI.Label(bannerRect, label, labelStyle);
+
+            EditorGUILayout.Space(6);
         }
 
         private Color GetRarityColor(string rarity)

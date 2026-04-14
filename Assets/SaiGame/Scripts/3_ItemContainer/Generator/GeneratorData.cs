@@ -14,14 +14,32 @@ namespace SaiGame.Services
         public string inventory_item_id;
         public GeneratorDefinition definition;
         public int ticket_count;
-        public int tick_capacity;
         public bool is_full;
         public int next_tick_in_seconds;
         public string checkpoint_at;
-        public int production_interval_seconds;
 
         [Header("Local Calculation Setting")]
         public bool enableLocalCalculation = true;
+
+        /// <summary>Safe accessor for the nested generator_config (may be null if definition/metadata missing).</summary>
+        public GeneratorConfig Config => this.definition?.metadata?.generator_config;
+
+        public int tick_capacity => this.Config != null ? this.Config.tick_capacity : 0;
+
+        public int production_interval_seconds => this.Config != null ? this.Config.production_interval_seconds : 0;
+
+        public const string DEFAULT_COLLECT_DESTINATION = "mailbox";
+
+        public string collect_destination
+        {
+            get
+            {
+                string raw = this.Config?.collect_destination;
+                return string.IsNullOrEmpty(raw) ? DEFAULT_COLLECT_DESTINATION : raw;
+            }
+        }
+
+        public GeneratorOutputPool[] output_pool => this.Config?.output_pool;
 
         // Property for backward compatibility and easy access
         public int capacity => this.tick_capacity;
