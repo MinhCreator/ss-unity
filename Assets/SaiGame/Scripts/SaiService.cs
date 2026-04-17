@@ -10,7 +10,7 @@ namespace SaiGame.Services
     public class SaiService : SaiSingleton<SaiService>
     {
         public const string PACKAGE_VERSION = "0.2.31";
-        public const string PACKAGE_NAME = "SaiGame Services";
+        public const string PACKAGE_NAME = "Sai Server";
 
         [SerializeField] protected SaiAuth saiAuth;
         [SerializeField] protected GamerProgress gamerProgress;
@@ -26,7 +26,7 @@ namespace SaiGame.Services
         [SerializeField] protected Shop shop;
         [SerializeField] protected ChainQuest chainQuest;
         [SerializeField] protected QuestProgressor questProgressor;
-        [SerializeField] protected QuestStatus questClaims;
+        [SerializeField] protected QuestHistory questHistory;
         [SerializeField] protected DailyQuest dailyQuest;
         [SerializeField] protected ItemMove itemMove;
         [SerializeField] protected ItemSwap itemSwap;
@@ -122,7 +122,7 @@ namespace SaiGame.Services
 
         public QuestProgressor QuestProgressor => this.questProgressor;
 
-        public QuestStatus QuestClaims => this.questClaims;
+        public QuestHistory QuestHistory => this.questHistory;
 
         public DailyQuest DailyQuest => this.dailyQuest;
 
@@ -386,7 +386,7 @@ namespace SaiGame.Services
             this.LoadShop();
             this.LoadChainQuest();
             this.LoadQuestProgressor();
-            this.LoadQuestStatus();
+            this.LoadQuestHistory();
             this.LoadDailyQuest();
             this.LoadItemTag();
             this.LoadItemMove();
@@ -525,12 +525,12 @@ namespace SaiGame.Services
                 Debug.Log(transform.name + ": LoadDailyQuest", gameObject);
         }
 
-        protected virtual void LoadQuestStatus()
+        protected virtual void LoadQuestHistory()
         {
-            if (this.questClaims != null) return;
-            this.questClaims = GetComponentInChildren<QuestStatus>();
+            if (this.questHistory != null) return;
+            this.questHistory = GetComponentInChildren<QuestHistory>();
             if (this.showDebugLog)
-                Debug.Log(transform.name + ": LoadQuestStatus", gameObject);
+                Debug.Log(transform.name + ": LoadQuestHistory", gameObject);
         }
 
         protected virtual void LoadItemMove()

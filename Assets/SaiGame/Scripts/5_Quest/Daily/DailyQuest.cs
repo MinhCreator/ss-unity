@@ -15,6 +15,9 @@ namespace SaiGame.Services
         public event Action<AssignAheadResponse> OnAssignAheadSuccess;
         public event Action<string> OnAssignAheadFailure;
 
+        [Header("Auto Load Settings")]
+        [SerializeField] protected bool autoLoadOnLogin = false;
+
         [Header("Daily Quest Settings")]
         [SerializeField] protected string dqPoolId = "";
         [SerializeField] protected int daysAhead = 7;
@@ -32,7 +35,15 @@ namespace SaiGame.Services
         protected override void LoadComponents()
         {
             base.LoadComponents();
+            this.RegisterLoginListener();
             this.RegisterLogoutListener();
+        }
+
+        protected virtual void RegisterLoginListener()
+        {
+            if (SaiService.Instance?.SaiAuth == null) return;
+
+            SaiService.Instance.SaiAuth.OnLoginSuccess += this.HandleLoginSuccess;
         }
 
         protected virtual void RegisterLogoutListener()
@@ -46,8 +57,30 @@ namespace SaiGame.Services
         {
             if (SaiService.Instance?.SaiAuth != null)
             {
+                SaiService.Instance.SaiAuth.OnLoginSuccess -= this.HandleLoginSuccess;
                 SaiService.Instance.SaiAuth.OnLogoutSuccess -= this.HandleLogoutSuccess;
             }
+        }
+
+        protected virtual void HandleLoginSuccess(LoginResponse response)
+        {
+            if (!this.autoLoadOnLogin) return;
+
+            if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                Debug.Log("[DailyQuest] Auto-loading pools after successful login...");
+
+            this.GetPools(
+                onSuccess: pools =>
+                {
+                    if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                        Debug.Log($"[DailyQuest] Pools auto-loaded: {pools.pools?.Length ?? 0} pools");
+                },
+                onError: error =>
+                {
+                    if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
+                        Debug.LogWarning($"[DailyQuest] Auto-load pools failed: {error}");
+                }
+            );
         }
 
         protected virtual void HandleLogoutSuccess()

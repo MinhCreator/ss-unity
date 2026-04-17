@@ -9,6 +9,7 @@ namespace SaiGame.Services
     public class DailyQuestEditor : Editor
     {
         private DailyQuest dailyQuest;
+        private SerializedProperty autoLoadOnLogin;
         private SerializedProperty dqPoolId;
         private SerializedProperty daysAhead;
 
@@ -38,9 +39,42 @@ namespace SaiGame.Services
         private void OnEnable()
         {
             this.dailyQuest = (DailyQuest)target;
+            this.autoLoadOnLogin = serializedObject.FindProperty("autoLoadOnLogin");
             this.dqPoolId = serializedObject.FindProperty("dqPoolId");
             this.daysAhead = serializedObject.FindProperty("daysAhead");
             this.SyncDropdownSelectionFromProperty();
+
+            if (this.dailyQuest != null)
+                this.dailyQuest.OnGetPoolsSuccess += this.HandlePoolsLoaded;
+        }
+
+        private void OnDisable()
+        {
+            if (this.dailyQuest != null)
+                this.dailyQuest.OnGetPoolsSuccess -= this.HandlePoolsLoaded;
+        }
+
+        private void HandlePoolsLoaded(DailyQuestPoolsResponse response)
+        {
+            this.loadedPools = response.pools ?? new DailyQuestPoolData[0];
+
+            this.poolDisplayOptions = new string[this.loadedPools.Length];
+            for (int i = 0; i < this.loadedPools.Length; i++)
+            {
+                DailyQuestPoolData p = this.loadedPools[i];
+                this.poolDisplayOptions[i] = $"{p.display_name}  ({p.pool_key})";
+            }
+
+            this.SyncDropdownSelectionFromProperty();
+
+            if (this.selectedPoolIndex < 0 && this.loadedPools.Length > 0)
+            {
+                this.selectedPoolIndex = 0;
+                this.dqPoolId.stringValue = this.loadedPools[0].id;
+                serializedObject.ApplyModifiedProperties();
+            }
+
+            Repaint();
         }
 
         private void SyncDropdownSelectionFromProperty()
@@ -66,6 +100,10 @@ namespace SaiGame.Services
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
+
+            EditorGUILayout.PropertyField(this.autoLoadOnLogin, new GUIContent("Auto Load on Login", "Automatically load pools when user logs in"));
+
+            EditorGUILayout.Space();
 
             this.DrawPoolDropdownRow();
 

@@ -92,7 +92,7 @@ namespace SaiGame.Services
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Quest Child Object", EditorStyles.miniBoldLabel);
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("questProgressor"),      new GUIContent("Quest Progressor"));
-                EditorGUILayout.PropertyField(this.serializedObject.FindProperty("questClaims"),          new GUIContent("Quest Status"));
+                EditorGUILayout.PropertyField(this.serializedObject.FindProperty("questHistory"),         new GUIContent("Quest History"));
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("chainQuest"),           new GUIContent("Chain Quest"));
                 EditorGUILayout.PropertyField(this.serializedObject.FindProperty("dailyQuest"),           new GUIContent("Daily Quest"));
 
