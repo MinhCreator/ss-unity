@@ -15,9 +15,6 @@ namespace SaiGame.Services
         public event Action<AssignAheadResponse> OnAssignAheadSuccess;
         public event Action<string> OnAssignAheadFailure;
 
-        [Header("Auto Load Settings")]
-        [SerializeField] protected bool autoLoadOnLogin = false;
-
         [Header("Daily Quest Settings")]
         [SerializeField] protected string dqPoolId = "";
         [SerializeField] protected int daysAhead = 7;
@@ -35,15 +32,7 @@ namespace SaiGame.Services
         protected override void LoadComponents()
         {
             base.LoadComponents();
-            this.RegisterLoginListener();
             this.RegisterLogoutListener();
-        }
-
-        protected virtual void RegisterLoginListener()
-        {
-            if (SaiService.Instance?.SaiAuth == null) return;
-
-            SaiService.Instance.SaiAuth.OnLoginSuccess += this.HandleLoginSuccess;
         }
 
         protected virtual void RegisterLogoutListener()
@@ -57,33 +46,8 @@ namespace SaiGame.Services
         {
             if (SaiService.Instance?.SaiAuth != null)
             {
-                SaiService.Instance.SaiAuth.OnLoginSuccess -= this.HandleLoginSuccess;
                 SaiService.Instance.SaiAuth.OnLogoutSuccess -= this.HandleLogoutSuccess;
             }
-        }
-
-        protected virtual void HandleLoginSuccess(LoginResponse response)
-        {
-            if (!this.autoLoadOnLogin) return;
-            if (string.IsNullOrEmpty(this.dqPoolId)) return;
-
-            if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
-                Debug.Log("[DailyQuest] Auto-assigning daily quests after successful login...");
-
-            this.AssignAhead(
-                dqPoolId: this.dqPoolId,
-                daysAhead: this.daysAhead,
-                onSuccess: result =>
-                {
-                    if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
-                        Debug.Log($"[DailyQuest] Quests auto-assigned: {result.days?.Length ?? 0} days from {result.start_date} to {result.end_date}");
-                },
-                onError: error =>
-                {
-                    if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
-                        Debug.LogWarning($"[DailyQuest] Auto-assign failed: {error}");
-                }
-            );
         }
 
         protected virtual void HandleLogoutSuccess()
@@ -325,6 +289,18 @@ namespace SaiGame.Services
                     try
                     {
                         TodayQuestResponse todayResponse = JsonUtility.FromJson<TodayQuestResponse>(response);
+
+                        // progress_data inside each entry is dynamic JSON — extract manually as raw strings.
+                        if (todayResponse.entries != null && todayResponse.entries.Length > 0)
+                        {
+                            string[] perEntryProgressData = this.ExtractEntriesProgressData(response);
+                            for (int i = 0; i < todayResponse.entries.Length && i < perEntryProgressData.Length; i++)
+                            {
+                                if (todayResponse.entries[i]?.progress != null)
+                                    todayResponse.entries[i].progress.progress_data_json = perEntryProgressData[i];
+                            }
+                        }
+
                         this.currentTodayQuestResponse = todayResponse;
 
                         if (SaiService.Instance != null && SaiService.Instance.ShowDebug)
@@ -389,5 +365,83 @@ namespace SaiGame.Services
 
         public string GetDqPoolId() => this.dqPoolId;
         public int GetDaysAhead() => this.daysAhead;
+
+        // ── Dynamic JSON helpers ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Walks the top-level entries[] array and extracts each entry's "progress.progress_data"
+        /// block as raw JSON. Returns a parallel array (one slot per entry; null if absent).
+        /// </summary>
+        private string[] ExtractEntriesProgressData(string fullJson)
+        {
+            int entriesIdx = fullJson.IndexOf("\"entries\"");
+            if (entriesIdx < 0) return new string[0];
+            int colon = fullJson.IndexOf(':', entriesIdx);
+            if (colon < 0) return new string[0];
+            int arrayStart = fullJson.IndexOf('[', colon);
+            if (arrayStart < 0) return new string[0];
+
+            var result = new System.Collections.Generic.List<string>();
+            int depth = 0;
+            int objStart = -1;
+            for (int i = arrayStart + 1; i < fullJson.Length; i++)
+            {
+                char c = fullJson[i];
+                if (c == '{')
+                {
+                    if (depth == 0) objStart = i;
+                    depth++;
+                }
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0 && objStart >= 0)
+                    {
+                        string obj = fullJson.Substring(objStart, i - objStart + 1);
+                        string progressBlock = this.ExtractJsonObject(obj, "progress");
+                        string progressData = progressBlock != null ? this.ExtractJsonObject(progressBlock, "progress_data") : null;
+                        result.Add(progressData);
+                        objStart = -1;
+                    }
+                }
+                else if (c == ']' && depth == 0)
+                {
+                    break;
+                }
+            }
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Finds the value of a JSON object key and returns the entire {…} block as a string.
+        /// Returns null if the key is not found or the value is not an object.
+        /// </summary>
+        private string ExtractJsonObject(string json, string key)
+        {
+            string searchKey = "\"" + key + "\"";
+            int keyIdx = json.IndexOf(searchKey);
+            if (keyIdx < 0) return null;
+
+            int colonIdx = json.IndexOf(':', keyIdx + searchKey.Length);
+            if (colonIdx < 0) return null;
+
+            int start = colonIdx + 1;
+            while (start < json.Length && (json[start] == ' ' || json[start] == '\n' || json[start] == '\r' || json[start] == '\t'))
+                start++;
+
+            if (start >= json.Length || json[start] != '{') return null;
+
+            int depth = 0;
+            for (int i = start; i < json.Length; i++)
+            {
+                if (json[i] == '{') depth++;
+                else if (json[i] == '}')
+                {
+                    depth--;
+                    if (depth == 0) return json.Substring(start, i - start + 1);
+                }
+            }
+            return null;
+        }
     }
 }

@@ -250,16 +250,15 @@ namespace SaiGame.Services
                 if (!string.IsNullOrEmpty(def.description))
                     EditorGUILayout.LabelField(def.description, EditorStyles.wordWrappedMiniLabel);
 
-                if (def.rewards != null && def.rewards.Length > 0)
+                int visibleRewards = CountVisibleQuestRewards(def.rewards);
+                if (visibleRewards > 0)
                 {
                     EditorGUILayout.Space(2);
                     EditorGUILayout.LabelField("<b>Rewards:</b>", rich);
                     foreach (QuestReward r in def.rewards)
                     {
-                        if (r.reward_type == "coin")
-                            EditorGUILayout.LabelField(
-                                $"  <color=#FFD700>● coin</color>  <b>×{r.amount}</b>", rich);
-                        else if (r.reward_type == "item")
+                        if (IsHiddenQuestReward(r)) continue;
+                        if (r.reward_type == "item")
                             EditorGUILayout.LabelField(
                                 $"  <color=#66CCFF>● item</color>  <color=#AAAAAA>{r.item_definition_id}</color>  <b>×{r.quantity_min}–{r.quantity_max}</b>",
                                 rich);
@@ -321,6 +320,14 @@ namespace SaiGame.Services
             EditorGUILayout.LabelField($"<color=#888888>Claim: {claim.id}</color>", mini);
             if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = claim.id;
             EditorGUILayout.EndHorizontal();
+            string codeName = claim.quest_definition?.code_name;
+            if (!string.IsNullOrEmpty(codeName))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"<color=#888888>CODE: {codeName}</color>", mini);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = codeName;
+                EditorGUILayout.EndHorizontal();
+            }
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"<color=#888888>Def: {claim.quest_definition_id}</color>", mini);
             if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = claim.quest_definition_id;
@@ -378,16 +385,15 @@ namespace SaiGame.Services
                 }
 
                 // Definition rewards
-                if (def.rewards != null && def.rewards.Length > 0)
+                int visibleDefRewards = CountVisibleQuestRewards(def.rewards);
+                if (visibleDefRewards > 0)
                 {
                     EditorGUILayout.Space(2);
                     EditorGUILayout.LabelField("<b>Quest Rewards:</b>", rich);
                     foreach (QuestReward r in def.rewards)
                     {
-                        if (r.reward_type == "coin")
-                            EditorGUILayout.LabelField(
-                                $"  <color=#FFD700>● coin</color>  <b>×{r.amount}</b>", rich);
-                        else if (r.reward_type == "item")
+                        if (IsHiddenQuestReward(r)) continue;
+                        if (r.reward_type == "item")
                             EditorGUILayout.LabelField(
                                 $"  <color=#66CCFF>● item</color>  <color=#AAAAAA>{r.item_definition_id}</color>  <b>×{r.quantity_min}–{r.quantity_max}</b>",
                                 rich);
@@ -398,15 +404,15 @@ namespace SaiGame.Services
             }
 
             // ── Rewards Granted ───────────────────────────────────────────────
-            if (claim.rewards_granted != null && claim.rewards_granted.Length > 0)
+            int visibleGranted = CountVisibleGrantedRewards(claim.rewards_granted);
+            if (visibleGranted > 0)
             {
                 EditorGUILayout.Space(3);
                 EditorGUILayout.LabelField("<b>Rewards Granted:</b>", rich);
                 foreach (ClaimQuestGrantedReward r in claim.rewards_granted)
                 {
-                    string rewardColor = r.reward_type == "coin" ? "#FFD700"
-                        : r.reward_type == "item" ? "#66CCFF"
-                        : "#FFFFFF";
+                    if (IsHiddenGrantedReward(r)) continue;
+                    string rewardColor = r.reward_type == "item" ? "#66CCFF" : "#FFFFFF";
 
                     string line = $"  <color={rewardColor}>● {r.reward_type}</color>";
                     if (r.amount > 0) line += $"  <b>×{r.amount}</b>";
@@ -452,6 +458,28 @@ namespace SaiGame.Services
                     Repaint();
                 }
             );
+        }
+
+        // Coin rewards are hidden — backend doesn't process them.
+        private static bool IsHiddenQuestReward(QuestReward r) => r != null && r.reward_type == "coin";
+        private static bool IsHiddenGrantedReward(ClaimQuestGrantedReward r) => r != null && r.reward_type == "coin";
+
+        private static int CountVisibleQuestRewards(QuestReward[] rewards)
+        {
+            if (rewards == null) return 0;
+            int count = 0;
+            foreach (QuestReward r in rewards)
+                if (!IsHiddenQuestReward(r)) count++;
+            return count;
+        }
+
+        private static int CountVisibleGrantedRewards(ClaimQuestGrantedReward[] rewards)
+        {
+            if (rewards == null) return 0;
+            int count = 0;
+            foreach (ClaimQuestGrantedReward r in rewards)
+                if (!IsHiddenGrantedReward(r)) count++;
+            return count;
         }
     }
 }

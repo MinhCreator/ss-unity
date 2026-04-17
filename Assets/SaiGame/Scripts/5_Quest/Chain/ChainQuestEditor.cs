@@ -17,18 +17,19 @@ namespace SaiGame.Services
         private bool showChainList = true;
         private bool showUtilityButtons = true;
 
+        // Per-chain collapse state (keyed by chain id)
+        private readonly Dictionary<string, bool> expandedChains = new Dictionary<string, bool>();
+        // Per-member collapse state (keyed by member id)
+        private readonly Dictionary<string, bool> expandedMembers = new Dictionary<string, bool>();
+
         // Per-chain members cache: chainId → response
         private readonly Dictionary<string, ChainMembersResponse> membersCache = new Dictionary<string, ChainMembersResponse>();
-        // Per-chain members foldout state
         private readonly Dictionary<string, bool> membersFoldout = new Dictionary<string, bool>();
-        // Per-chain members loading state
         private readonly HashSet<string> loadingMembers = new HashSet<string>();
 
         // Per-chain tree cache: chainId → response
         private readonly Dictionary<string, ChainQuestTreeResponse> treeCache = new Dictionary<string, ChainQuestTreeResponse>();
-        // Per-chain tree foldout state
         private readonly Dictionary<string, bool> treeFoldout = new Dictionary<string, bool>();
-        // Per-chain tree loading state
         private readonly HashSet<string> loadingTree = new HashSet<string>();
 
         private void OnEnable()
@@ -122,63 +123,121 @@ namespace SaiGame.Services
             serializedObject.ApplyModifiedProperties();
         }
 
+        // ── Chain Card ────────────────────────────────────────────────────────
+
         private void DrawChainSummary(ChainQuestData chain)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField($"{chain.display_name}", EditorStyles.boldLabel);
+            string chainId = chain.id;
+            if (!this.expandedChains.ContainsKey(chainId))
+                this.expandedChains[chainId] = false;
+
+            // Header: chain name + active badge (right-aligned)
+            int memberCount = this.membersCache.ContainsKey(chainId) ? (this.membersCache[chainId].members?.Length ?? 0) : -1;
+            string memberSuffix = memberCount >= 0 ? $"  [{memberCount}]" : "";
+            string headerLabel = $"★ {chain.display_name}{memberSuffix}";
+
+            GUIStyle foldoutStyle = new GUIStyle(EditorStyles.foldout);
+            foldoutStyle.fontSize = 13;
+            foldoutStyle.fontStyle = FontStyle.Bold;
+            Color titleColor = this.GetChainTypeColor(chain.chain_type);
+            foldoutStyle.normal.textColor = titleColor;
+            foldoutStyle.onNormal.textColor = titleColor;
+            foldoutStyle.focused.textColor = titleColor;
+            foldoutStyle.onFocused.textColor = titleColor;
+            foldoutStyle.active.textColor = titleColor;
+            foldoutStyle.onActive.textColor = titleColor;
+
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField($"ID: {chain.id}");
+            this.expandedChains[chainId] = EditorGUILayout.Foldout(this.expandedChains[chainId], headerLabel, true, foldoutStyle);
+
+            // Active badge
+            GUIStyle badgeStyle = new GUIStyle(EditorStyles.label);
+            badgeStyle.fontSize = 11;
+            badgeStyle.fontStyle = FontStyle.Bold;
+            badgeStyle.alignment = TextAnchor.MiddleRight;
+            badgeStyle.normal.textColor = chain.is_active ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
+            EditorGUILayout.LabelField(chain.is_active ? "ACTIVE" : "INACTIVE", badgeStyle, GUILayout.MinWidth(70));
+            EditorGUILayout.EndHorizontal();
+
+            if (!this.expandedChains[chainId])
+            {
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.Space(4);
+                return;
+            }
+
+            this.DrawSeparator();
+
+            // Compact info
+            GUIStyle labelStyle = new GUIStyle(EditorStyles.label);
+            labelStyle.fontSize = 10;
+            labelStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+
+            EditorGUILayout.LabelField($"KEY: {chain.chain_key}", labelStyle);
+            EditorGUILayout.LabelField($"TYPE: {chain.chain_type.ToUpper()}", labelStyle);
+
+            GUIStyle idStyle = new GUIStyle(EditorStyles.label);
+            idStyle.fontSize = 10;
+            idStyle.normal.textColor = new Color(1f, 0.84f, 0f);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"ID: {chain.id}", idStyle);
             if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = chain.id;
             EditorGUILayout.EndHorizontal();
-            EditorGUILayout.LabelField($"Key: {chain.chain_key}");
-            EditorGUILayout.LabelField($"Type: {chain.chain_type}  |  Active: {chain.is_active}");
 
             if (!string.IsNullOrEmpty(chain.description))
-                EditorGUILayout.LabelField($"Description: {chain.description}");
+            {
+                GUIStyle descStyle = new GUIStyle(EditorStyles.label);
+                descStyle.fontSize = 10;
+                descStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
+                descStyle.wordWrap = true;
+                descStyle.fontStyle = FontStyle.Italic;
+                EditorGUILayout.LabelField(chain.description, descStyle);
+            }
 
-            EditorGUILayout.LabelField($"Created: {chain.created_at}");
+            GUIStyle metaStyle = new GUIStyle(EditorStyles.label);
+            metaStyle.fontSize = 9;
+            metaStyle.normal.textColor = new Color(0.45f, 0.45f, 0.45f);
+            EditorGUILayout.LabelField($"Created: {chain.created_at}", metaStyle);
 
-            EditorGUILayout.Space(4);
+            EditorGUILayout.Space(6);
 
-            // Members button
-            bool isLoading = this.loadingMembers.Contains(chain.id);
-            bool hasCached = this.membersCache.ContainsKey(chain.id);
+            // Action buttons row 1: Members
+            bool isLoadingMembers = this.loadingMembers.Contains(chainId);
+            bool hasCachedMembers = this.membersCache.ContainsKey(chainId);
 
             EditorGUILayout.BeginHorizontal();
-            GUI.backgroundColor = isLoading ? Color.gray : new Color(0.4f, 1f, 0.6f);
-            EditorGUI.BeginDisabledGroup(isLoading);
-            if (GUILayout.Button(isLoading ? "Loading..." : "Quest Flat", GUILayout.Height(24)))
-                this.LoadChainMembers(chain.id);
+            GUI.backgroundColor = isLoadingMembers ? Color.gray : new Color(0.4f, 0.9f, 0.6f);
+            EditorGUI.BeginDisabledGroup(isLoadingMembers);
+            if (GUILayout.Button(isLoadingMembers ? "📋 Loading..." : "📋 Quest Flat", GUILayout.Height(26)))
+                this.LoadChainMembers(chainId);
             EditorGUI.EndDisabledGroup();
             GUI.backgroundColor = Color.white;
 
-            if (hasCached)
-            {
-                GUI.backgroundColor = new Color(1f, 0.5f, 0.5f);
-                if (GUILayout.Button("Clear", GUILayout.Height(24), GUILayout.Width(50)))
-                {
-                    this.membersCache.Remove(chain.id);
-                    this.membersFoldout.Remove(chain.id);
-                }
-                GUI.backgroundColor = Color.white;
-            }
             EditorGUILayout.EndHorizontal();
 
             // Inline members display
-            if (hasCached)
+            if (hasCachedMembers)
             {
-                ChainMembersResponse cached = this.membersCache[chain.id];
+                ChainMembersResponse cached = this.membersCache[chainId];
 
-                if (!this.membersFoldout.ContainsKey(chain.id))
-                    this.membersFoldout[chain.id] = true;
+                if (!this.membersFoldout.ContainsKey(chainId))
+                    this.membersFoldout[chainId] = true;
 
-                this.membersFoldout[chain.id] = EditorGUILayout.Foldout(
-                    this.membersFoldout[chain.id],
-                    $"Quest Flat ({cached.members?.Length ?? 0})",
-                    true);
+                GUIStyle sectionHeader = new GUIStyle(EditorStyles.foldout);
+                sectionHeader.fontSize = 11;
+                sectionHeader.fontStyle = FontStyle.Bold;
+                sectionHeader.normal.textColor = new Color(0.7f, 0.9f, 1f);
+                sectionHeader.onNormal.textColor = sectionHeader.normal.textColor;
 
-                if (this.membersFoldout[chain.id] && cached.members != null)
+                this.membersFoldout[chainId] = EditorGUILayout.Foldout(
+                    this.membersFoldout[chainId],
+                    $"📋 MEMBERS ({cached.members?.Length ?? 0})",
+                    true,
+                    sectionHeader);
+
+                if (this.membersFoldout[chainId] && cached.members != null)
                 {
                     EditorGUI.indentLevel++;
                     foreach (ChainMemberData member in cached.members)
@@ -189,107 +248,290 @@ namespace SaiGame.Services
 
             EditorGUILayout.Space(2);
 
-            // Tree button
-            bool isLoadingTree = this.loadingTree.Contains(chain.id);
-            bool hasCachedTree = this.treeCache.ContainsKey(chain.id);
+            // Action buttons row 2: Tree
+            bool isLoadingTree = this.loadingTree.Contains(chainId);
+            bool hasCachedTree = this.treeCache.ContainsKey(chainId);
 
             EditorGUILayout.BeginHorizontal();
-            GUI.backgroundColor = isLoadingTree ? Color.gray : new Color(0.6f, 0.8f, 1f);
+            GUI.backgroundColor = isLoadingTree ? Color.gray : new Color(0.5f, 0.7f, 1f);
             EditorGUI.BeginDisabledGroup(isLoadingTree);
-            if (GUILayout.Button(isLoadingTree ? "Loading..." : "Quest Tree", GUILayout.Height(24)))
-                this.LoadChainTree(chain.id);
+            if (GUILayout.Button(isLoadingTree ? "🌳 Loading..." : "🌳 Quest Tree", GUILayout.Height(26)))
+                this.LoadChainTree(chainId);
             EditorGUI.EndDisabledGroup();
             GUI.backgroundColor = Color.white;
-
-            if (hasCachedTree)
-            {
-                GUI.backgroundColor = new Color(1f, 0.5f, 0.5f);
-                if (GUILayout.Button("Clear", GUILayout.Height(24), GUILayout.Width(50)))
-                {
-                    this.treeCache.Remove(chain.id);
-                    this.treeFoldout.Remove(chain.id);
-                }
-                GUI.backgroundColor = Color.white;
-            }
             EditorGUILayout.EndHorizontal();
 
             // Inline tree display
             if (hasCachedTree)
             {
-                ChainQuestTreeResponse cachedTree = this.treeCache[chain.id];
+                ChainQuestTreeResponse cachedTree = this.treeCache[chainId];
 
-                if (!this.treeFoldout.ContainsKey(chain.id))
-                    this.treeFoldout[chain.id] = true;
+                if (!this.treeFoldout.ContainsKey(chainId))
+                    this.treeFoldout[chainId] = true;
 
-                this.treeFoldout[chain.id] = EditorGUILayout.Foldout(
-                    this.treeFoldout[chain.id],
-                    $"Quest Tree — {cachedTree.chain_name} ({cachedTree.nodes?.Length ?? 0} root nodes)",
-                    true);
+                GUIStyle sectionHeader = new GUIStyle(EditorStyles.foldout);
+                sectionHeader.fontSize = 11;
+                sectionHeader.fontStyle = FontStyle.Bold;
+                sectionHeader.normal.textColor = new Color(0.8f, 0.9f, 1f);
+                sectionHeader.onNormal.textColor = sectionHeader.normal.textColor;
 
-                if (this.treeFoldout[chain.id] && cachedTree.nodes != null)
+                this.treeFoldout[chainId] = EditorGUILayout.Foldout(
+                    this.treeFoldout[chainId],
+                    $"🌳 QUEST TREE — {cachedTree.chain_name} ({cachedTree.nodes?.Length ?? 0} root)",
+                    true,
+                    sectionHeader);
+
+                if (this.treeFoldout[chainId] && cachedTree.nodes != null)
                 {
-                    EditorGUI.indentLevel++;
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     foreach (QuestTreeNode node in cachedTree.nodes)
                         this.DrawTreeNode(node, 0);
-                    EditorGUI.indentLevel--;
+                    EditorGUILayout.EndVertical();
                 }
             }
 
             EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(4);
         }
+
+        // ── Member Card ───────────────────────────────────────────────────────
 
         private void DrawMemberSummary(ChainMemberData member)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             string questName = member.definition != null ? member.definition.name : member.quest_definition_id;
-            EditorGUILayout.LabelField(questName, EditorStyles.boldLabel);
+            string memberKey = !string.IsNullOrEmpty(member.id) ? member.id : member.quest_definition_id;
+            if (!this.expandedMembers.ContainsKey(memberKey))
+                this.expandedMembers[memberKey] = false;
+
+            // Collapsible header: quest name + active badge
+            GUIStyle foldoutStyle = new GUIStyle(EditorStyles.foldout);
+            foldoutStyle.fontSize = 12;
+            foldoutStyle.fontStyle = FontStyle.Bold;
+            Color titleColor = new Color(0.9f, 0.9f, 1f);
+            foldoutStyle.normal.textColor = titleColor;
+            foldoutStyle.onNormal.textColor = titleColor;
+            foldoutStyle.focused.textColor = titleColor;
+            foldoutStyle.onFocused.textColor = titleColor;
+            foldoutStyle.active.textColor = titleColor;
+            foldoutStyle.onActive.textColor = titleColor;
+
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField($"Member ID: {member.id}");
+            this.expandedMembers[memberKey] = EditorGUILayout.Foldout(this.expandedMembers[memberKey], $"◆ {questName}", true, foldoutStyle);
+
+            if (member.definition != null)
+            {
+                GUIStyle badgeStyle = new GUIStyle(EditorStyles.label);
+                badgeStyle.fontSize = 10;
+                badgeStyle.fontStyle = FontStyle.Bold;
+                badgeStyle.alignment = TextAnchor.MiddleRight;
+                badgeStyle.normal.textColor = member.definition.is_active ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
+                EditorGUILayout.LabelField(member.definition.is_active ? "ACTIVE" : "INACTIVE", badgeStyle, GUILayout.MinWidth(70));
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (!this.expandedMembers[memberKey])
+            {
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.Space(2);
+                return;
+            }
+
+            this.DrawSeparator();
+
+            GUIStyle labelStyle = new GUIStyle(EditorStyles.label);
+            labelStyle.fontSize = 10;
+            labelStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+
+            // Compact info
+            EditorGUILayout.LabelField($"ORDER: {member.sort_order}", labelStyle);
+
+            if (member.definition != null)
+            {
+                EditorGUILayout.LabelField($"TYPE: {member.definition.quest_type.ToUpper()}", labelStyle);
+            }
+
+            // IDs
+            GUIStyle idStyle = new GUIStyle(EditorStyles.label);
+            idStyle.fontSize = 10;
+            idStyle.normal.textColor = new Color(1f, 0.84f, 0f);
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Member ID: {member.id}", idStyle);
             if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = member.id;
             EditorGUILayout.EndHorizontal();
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField($"Quest Def ID: {member.quest_definition_id}");
-            if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = member.quest_definition_id;
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.LabelField($"Sort Order: {member.sort_order}");
+
+            // CODE + Quest Def ID side-by-side
+            this.DrawCodeAndIdRow(member.definition?.code_name, member.quest_definition_id);
 
             if (member.unlock_quest_ids != null && member.unlock_quest_ids.Length > 0)
-                EditorGUILayout.LabelField($"Unlocks: {string.Join(", ", member.unlock_quest_ids)}");
+            {
+                GUIStyle unlockStyle = new GUIStyle(EditorStyles.label);
+                unlockStyle.fontSize = 9;
+                unlockStyle.normal.textColor = new Color(0.7f, 0.9f, 1f);
+                unlockStyle.wordWrap = true;
+                EditorGUILayout.LabelField($"🔓 Unlocks: {string.Join(", ", member.unlock_quest_ids)}", unlockStyle);
+            }
 
             if (member.definition != null)
             {
                 QuestDefinitionData def = member.definition;
-                EditorGUILayout.LabelField($"Type: {def.quest_type}  |  Active: {def.is_active}");
 
                 if (!string.IsNullOrEmpty(def.description))
-                    EditorGUILayout.LabelField($"Description: {def.description}");
-
-                if (def.conditions != null && def.conditions.clauses != null && def.conditions.clauses.Length > 0)
                 {
-                    GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
-                    EditorGUILayout.LabelField($"<b>Conditions ({def.conditions.operator_type})</b>", richStyle);
-                    foreach (QuestClause clause in def.conditions.clauses)
-                        EditorGUILayout.LabelField($"  • [{clause.clause_id}] {clause.type}");
+                    GUIStyle descStyle = new GUIStyle(EditorStyles.label);
+                    descStyle.fontSize = 10;
+                    descStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
+                    descStyle.wordWrap = true;
+                    descStyle.fontStyle = FontStyle.Italic;
+                    EditorGUILayout.LabelField(def.description, descStyle);
                 }
 
-                if (def.rewards != null && def.rewards.Length > 0)
+                // Conditions section
+                if (def.conditions != null && def.conditions.clauses != null && def.conditions.clauses.Length > 0)
                 {
-                    EditorGUILayout.LabelField($"Rewards ({def.rewards.Length}):");
+                    EditorGUILayout.Space(3);
+                    GUIStyle sectionStyle = new GUIStyle(EditorStyles.boldLabel);
+                    sectionStyle.fontSize = 10;
+                    sectionStyle.normal.textColor = new Color(1f, 0.7f, 0.4f);
+                    string op = string.IsNullOrEmpty(def.conditions.operator_type) ? "AND" : def.conditions.operator_type.ToUpper();
+                    EditorGUILayout.LabelField($"⚙ CONDITIONS ({op})", sectionStyle);
+
+                    foreach (QuestClause clause in def.conditions.clauses)
+                    {
+                        GUIStyle clauseStyle = new GUIStyle(EditorStyles.label);
+                        clauseStyle.fontSize = 9;
+                        clauseStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+                        EditorGUILayout.LabelField($"  • [{clause.clause_id}] {clause.type}", clauseStyle);
+                    }
+                }
+
+                // Rewards section (coin rewards are hidden — backend ignores them)
+                int visibleRewardCount = this.CountVisibleRewards(def.rewards);
+                if (visibleRewardCount > 0)
+                {
+                    EditorGUILayout.Space(3);
+                    GUIStyle sectionStyle = new GUIStyle(EditorStyles.boldLabel);
+                    sectionStyle.fontSize = 10;
+                    sectionStyle.normal.textColor = new Color(1f, 0.84f, 0.2f);
+                    EditorGUILayout.LabelField($"🎁 REWARDS ({visibleRewardCount})", sectionStyle);
+
                     foreach (QuestReward reward in def.rewards)
                     {
-                        if (reward.reward_type == "coin")
-                            EditorGUILayout.LabelField($"  • coin × {reward.amount}");
-                        else if (reward.reward_type == "item")
-                            EditorGUILayout.LabelField($"  • item {reward.item_definition_id} × {reward.quantity_min}-{reward.quantity_max}");
-                        else
-                            EditorGUILayout.LabelField($"  • {reward.reward_type}");
+                        if (this.IsHiddenReward(reward)) continue;
+                        this.DrawReward(reward);
                     }
                 }
             }
 
             EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(2);
         }
+
+        private void DrawReward(QuestReward reward)
+        {
+            GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
+            richStyle.fontSize = 10;
+
+            if (reward.reward_type == "item")
+                EditorGUILayout.LabelField($"  <color=#66CCFF>● item</color> {reward.item_definition_id} × <b>{reward.quantity_min}-{reward.quantity_max}</b>", richStyle);
+            else
+                EditorGUILayout.LabelField($"  <color=#AAAAAA>●</color> {reward.reward_type}", richStyle);
+        }
+
+        // Coin rewards are hidden — backend doesn't process them.
+        private bool IsHiddenReward(QuestReward reward) => reward != null && reward.reward_type == "coin";
+
+        private int CountVisibleRewards(QuestReward[] rewards)
+        {
+            if (rewards == null) return 0;
+            int count = 0;
+            foreach (QuestReward r in rewards)
+                if (!this.IsHiddenReward(r)) count++;
+            return count;
+        }
+
+        // ── Tree ──────────────────────────────────────────────────────────────
+
+        private void DrawTreeNode(QuestTreeNode node, int depth)
+        {
+            if (node == null) return;
+
+            string indent = new string(' ', depth * 4);
+            string statusColor;
+            string statusIcon;
+            switch (node.status)
+            {
+                case "completed": statusColor = "#00FF88"; statusIcon = "✓"; break;
+                case "active":    statusColor = "#FFD700"; statusIcon = "●"; break;
+                case "locked":    statusColor = "#666666"; statusIcon = "🔒"; break;
+                default:          statusColor = "#AAAAAA"; statusIcon = "○"; break;
+            }
+
+            GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
+            richStyle.fontSize = 10;
+            EditorGUILayout.LabelField(
+                $"{indent}<color={statusColor}>{statusIcon}</color> <b>{node.quest_name}</b>  <color={statusColor}>[{node.status}]</color>  <color=#666666>{node.quest_id}</color>",
+                richStyle);
+
+            if (node.children != null && node.children.Length > 0)
+            {
+                foreach (QuestTreeNode child in node.children)
+                    this.DrawTreeNode(child, depth + 1);
+            }
+        }
+
+        // ── Style helpers ─────────────────────────────────────────────────────
+
+        private void DrawSeparator()
+        {
+            GUIStyle separatorStyle = new GUIStyle(EditorStyles.label);
+            separatorStyle.fontSize = 8;
+            separatorStyle.normal.textColor = new Color(0.3f, 0.3f, 0.3f);
+            EditorGUILayout.LabelField("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", separatorStyle);
+        }
+
+        /// <summary>
+        /// Draws "CODE: xxx [Copy]" and "Quest Def ID: yyy [Copy]" on two separate rows.
+        /// Skips either row if its value is empty.
+        /// </summary>
+        private void DrawCodeAndIdRow(string codeName, string id)
+        {
+            GUIStyle idStyle = new GUIStyle(EditorStyles.label);
+            idStyle.fontSize = 10;
+            idStyle.normal.textColor = new Color(1f, 0.84f, 0f);
+
+            if (!string.IsNullOrEmpty(codeName))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"CODE: {codeName}", idStyle);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = codeName;
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (!string.IsNullOrEmpty(id))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"Quest Def ID: {id}", idStyle);
+                if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = id;
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        private Color GetChainTypeColor(string chainType)
+        {
+            switch ((chainType ?? "").ToLower())
+            {
+                case "linear":     return new Color(0.4f, 0.8f, 1f);   // Blue
+                case "branching":  return new Color(0.8f, 0.5f, 1f);   // Purple
+                case "tree":       return new Color(0.4f, 1f, 0.6f);   // Green
+                case "dag":        return new Color(1f, 0.7f, 0.3f);   // Orange
+                default:           return new Color(0.85f, 0.85f, 0.85f); // Light gray
+            }
+        }
+
+        // ── Network actions ───────────────────────────────────────────────────
 
         private void LoadChains()
         {
@@ -316,29 +558,6 @@ namespace SaiGame.Services
                     Debug.LogError($"[ChainQuestEditor] Failed to load chains: {error}");
                 }
             );
-        }
-
-        private void DrawTreeNode(QuestTreeNode node, int depth)
-        {
-            if (node == null) return;
-
-            string indent = new string(' ', depth * 4);
-            string statusColor = node.status == "completed" ? "#00FF88"
-                               : node.status == "active"    ? "#FFD700"
-                               : "#AAAAAA";
-
-            GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
-            EditorGUILayout.LabelField(
-                $"{indent}<b>{node.quest_name}</b>  <color={statusColor}>[{node.status}]</color>  <color=#888888>{node.quest_id}</color>",
-                richStyle);
-
-            if (node.children != null && node.children.Length > 0)
-            {
-                EditorGUI.indentLevel++;
-                foreach (QuestTreeNode child in node.children)
-                    this.DrawTreeNode(child, depth + 1);
-                EditorGUI.indentLevel--;
-            }
         }
 
         private void LoadChainMembers(string chainId)
