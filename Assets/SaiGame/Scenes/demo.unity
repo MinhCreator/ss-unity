@@ -446,11 +446,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 813458455079530658, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: password
-      value: 
+      value: 123qweasd
       objectReference: {fileID: 0}
     - target: {fileID: 813458455079530658, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: username
-      value: username_player1_1776240106190
+      value: username_player1_1776472928402
       objectReference: {fileID: 0}
     - target: {fileID: 813458455079530658, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: autoLogin
@@ -522,23 +522,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: port
-      value: 82
+      value: 443
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: gameId
-      value: a1a98da0-0700-42b5-a27f-f525926da3b7
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: useHttps
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: domainOption
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8686393883881292769, guid: 3cd71439f244afb48a8cc771f5246221, type: 3}
       propertyPath: serverEndpoint
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

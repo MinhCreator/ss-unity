@@ -316,7 +316,7 @@ namespace SaiGame.Services
                 // Conditions (full)
                 this.DrawConditionsBlock(def.conditions);
 
-                // Rewards (ALL — including coin)
+                // Rewards (coin rewards are skipped)
                 this.DrawRewardsBlock(def.rewards);
 
                 // Meta
@@ -401,13 +401,14 @@ namespace SaiGame.Services
 
         private void DrawRewardsBlock(QuestReward[] rewards)
         {
-            if (rewards == null || rewards.Length == 0) return;
+            int visible = CountVisibleQuestRewards(rewards);
+            if (visible == 0) return;
 
             EditorGUILayout.Space(3);
             GUIStyle sectionStyle = new GUIStyle(EditorStyles.boldLabel);
             sectionStyle.fontSize = 10;
             sectionStyle.normal.textColor = new Color(1f, 0.84f, 0.2f);
-            EditorGUILayout.LabelField($"🎁 REWARDS ({rewards.Length})", sectionStyle);
+            EditorGUILayout.LabelField($"🎁 REWARDS ({visible})", sectionStyle);
 
             GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
             richStyle.fontSize = 10;
@@ -415,6 +416,7 @@ namespace SaiGame.Services
             foreach (QuestReward r in rewards)
             {
                 if (r == null) continue;
+                if (IsHiddenQuestReward(r)) continue;
                 if (r.reward_type == "item")
                 {
                     EditorGUILayout.BeginHorizontal();
@@ -424,12 +426,6 @@ namespace SaiGame.Services
                     if (!string.IsNullOrEmpty(r.item_definition_id) && GUILayout.Button("Copy", GUILayout.Width(50)))
                         GUIUtility.systemCopyBuffer = r.item_definition_id;
                     EditorGUILayout.EndHorizontal();
-                }
-                else if (r.reward_type == "coin")
-                {
-                    EditorGUILayout.LabelField(
-                        $"  <color=#FFD700>● coin</color> × <b>{r.amount}</b>",
-                        richStyle);
                 }
                 else
                 {
