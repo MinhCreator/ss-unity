@@ -195,19 +195,15 @@ namespace SaiGame.Services
             dimStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
 
             // ── Header: quest name + status badge ─────────────────────────────
-            string statusColor = result.status switch
-            {
-                "claimed"     => "#FFD700",
-                "completed"   => "#00FF88",
-                "in_progress" => "#66CCFF",
-                _             => "#AAAAAA"
-            };
+            string statusColor = QuestStatusIcons.GetHex(result.status);
+            string statusIcon = QuestStatusIcons.GetIcon(result.status);
+            string statusText = (result.status ?? "unknown").ToLower();
             string questName = result.quest_definition?.name ?? result.progress?.quest_definition_id ?? "—";
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"<b>{questName}</b>", rich);
             EditorGUILayout.LabelField(
-                $"<color={statusColor}><b>{(result.status ?? "unknown").ToUpper()}</b></color>",
-                rich, GUILayout.MaxWidth(100f));
+                $"<color={statusColor}><b>{statusIcon} {statusText}</b></color>",
+                rich, GUILayout.MaxWidth(120f));
             EditorGUILayout.EndHorizontal();
 
             // ── PROGRESS ──────────────────────────────────────────────────────

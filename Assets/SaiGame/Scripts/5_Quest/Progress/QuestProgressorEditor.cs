@@ -363,10 +363,9 @@ namespace SaiGame.Services
                 {
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     GUIStyle rich = new GUIStyle(EditorStyles.label) { richText = true };
-                    string statusColor = lastCheck.progress.status == "in_progress" ? "#FFD700"
-                                      : lastCheck.progress.status == "completed"    ? "#00FF88"
-                                      : "#AAAAAA";
-                    EditorGUILayout.LabelField($"Status: <b><color={statusColor}>{lastCheck.progress.status}</color></b>", rich);
+                    string statusColor = QuestStatusIcons.GetHex(lastCheck.progress.status);
+                    string statusIcon = QuestStatusIcons.GetIcon(lastCheck.progress.status);
+                    EditorGUILayout.LabelField($"Status: <b><color={statusColor}>{statusIcon} {lastCheck.progress.status}</color></b>", rich);
                     if (lastCheck.quest_definition != null)
                     {
                         EditorGUILayout.LabelField($"Quest: <b>{lastCheck.quest_definition.name}</b>", rich);
@@ -419,10 +418,9 @@ namespace SaiGame.Services
                 {
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     GUIStyle rich = new GUIStyle(EditorStyles.label) { richText = true };
-                    string statusColor = last.status == "in_progress" ? "#FFD700"
-                                      : last.status == "completed"    ? "#00FF88"
-                                      : "#AAAAAA";
-                    EditorGUILayout.LabelField($"Status: <b><color={statusColor}>{last.status}</color></b>", rich);
+                    string statusColor = QuestStatusIcons.GetHex(last.status);
+                    string statusIcon = QuestStatusIcons.GetIcon(last.status);
+                    EditorGUILayout.LabelField($"Status: <b><color={statusColor}>{statusIcon} {last.status}</color></b>", rich);
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.LabelField($"Progress ID: {last.id}");
                     if (GUILayout.Button("Copy", GUILayout.Width(50))) GUIUtility.systemCopyBuffer = last.id;
