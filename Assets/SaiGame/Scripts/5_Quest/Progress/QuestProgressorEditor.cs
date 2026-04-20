@@ -214,12 +214,10 @@ namespace SaiGame.Services
 
                     if (!string.IsNullOrEmpty(entryStatus))
                     {
-                        string sc = entryStatus == "completed"   ? "#00FF88"
-                                  : entryStatus == "claimed"     ? "#FFD700"
-                                  : entryStatus == "in_progress" ? "#66CCFF"
-                                  : "#AAAAAA";
+                        string sc = QuestStatusIcons.GetHex(entryStatus);
+                        string si = QuestStatusIcons.GetIcon(entryStatus);
                         GUIStyle badge = new GUIStyle(EditorStyles.miniLabel) { richText = true, alignment = TextAnchor.MiddleRight };
-                        EditorGUILayout.LabelField($"<color={sc}><b>{entryStatus}</b></color>", badge, GUILayout.Width(90));
+                        EditorGUILayout.LabelField($"<color={sc}><b>{si} {entryStatus}</b></color>", badge, GUILayout.Width(110));
                     }
                     EditorGUILayout.EndHorizontal();
 
@@ -717,6 +715,8 @@ namespace SaiGame.Services
                 {
                     this.isClaiming = false;
                     Debug.Log($"[QuestProgressorEditor] Quest claimed  id={response.id}  claimed_at={response.claimed_at}");
+                    // Claim response has no status field — claimed_at is present, so the quest is "claimed".
+                    this.ApplyStatusToDailyEntry(questDefinitionId, "claimed");
                     Repaint();
                 },
                 onError: error =>
@@ -751,6 +751,7 @@ namespace SaiGame.Services
                 {
                     this.isChecking = false;
                     Debug.Log($"[QuestProgressorEditor] Quest checked  status={response.progress?.status}  quest={response.quest_definition?.name}");
+                    this.ApplyStatusToDailyEntry(questDefinitionId, response.progress?.status ?? response.status);
                     Repaint();
                 },
                 onError: error =>
@@ -912,6 +913,7 @@ namespace SaiGame.Services
                 {
                     this.isStarting = false;
                     Debug.Log($"[QuestProgressorEditor] Quest started  id={response.id}  status={response.status}  quest_def={response.quest_definition_id}");
+                    this.ApplyStatusToDailyEntry(questDefinitionId, response.status);
                     Repaint();
                 },
                 onError: error =>
@@ -921,6 +923,30 @@ namespace SaiGame.Services
                     Repaint();
                 }
             );
+        }
+
+        /// <summary>
+        /// Writes the new status back onto the matching <see cref="DailyQuestEntryData"/>
+        /// in the shared <c>CurrentTodayQuestResponse</c> so the picker status badge
+        /// — and the Daily inspector — flip immediately after Start / Check / Claim.
+        /// No-op when the selected quest is not from the daily source.
+        /// </summary>
+        private void ApplyStatusToDailyEntry(string questDefinitionId, string newStatus)
+        {
+            if (string.IsNullOrEmpty(questDefinitionId) || string.IsNullOrEmpty(newStatus)) return;
+
+            TodayQuestResponse today = SaiServer.Instance?.DailyQuest?.CurrentTodayQuestResponse;
+            if (today?.entries == null) return;
+
+            foreach (DailyQuestEntryData entry in today.entries)
+            {
+                string entryQuestId = entry?.quest?.id ?? entry?.assignment?.quest_definition_id;
+                if (entryQuestId == questDefinitionId)
+                {
+                    entry.status = newStatus;
+                    break;
+                }
+            }
         }
 
         // Coin rewards are hidden — backend doesn't process them.

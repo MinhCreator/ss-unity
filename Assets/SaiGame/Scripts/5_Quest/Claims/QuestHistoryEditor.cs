@@ -218,15 +218,10 @@ namespace SaiGame.Services
             {
                 QuestProgressSnapshot p = result.progress;
 
-                string progressStatusColor = p.status switch
-                {
-                    "claimed"     => "#FFD700",
-                    "completed"   => "#00FF88",
-                    "in_progress" => "#66CCFF",
-                    _             => "#AAAAAA"
-                };
+                string progressStatusColor = QuestStatusIcons.GetHex(p.status);
+                string progressStatusIcon = QuestStatusIcons.GetIcon(p.status);
                 EditorGUILayout.LabelField(
-                    $"Status: <color={progressStatusColor}><b>{p.status}</b></color>  |  Version: <b>{p.version}</b>",
+                    $"Status: <color={progressStatusColor}><b>{progressStatusIcon} {p.status}</b></color>  |  Version: <b>{p.version}</b>",
                     rich);
 
                 this.DrawCopyIdRow("Progress ID", p.id, idStyle);
@@ -499,12 +494,13 @@ namespace SaiGame.Services
             EditorGUILayout.BeginHorizontal();
             this.expandedClaims[claimKey] = EditorGUILayout.Foldout(this.expandedClaims[claimKey], $"◆ {questName}", true, foldoutStyle);
 
-            GUIStyle statusBadge = new GUIStyle(EditorStyles.label);
-            statusBadge.fontSize = 11;
+            // Every record in the claims list is by definition claimed — use the shared palette.
+            GUIStyle statusBadge = new GUIStyle(EditorStyles.miniLabel);
+            statusBadge.fontSize = 10;
             statusBadge.fontStyle = FontStyle.Bold;
             statusBadge.alignment = TextAnchor.MiddleRight;
-            statusBadge.normal.textColor = new Color(1f, 0.84f, 0.2f);
-            EditorGUILayout.LabelField("CLAIMED", statusBadge, GUILayout.MinWidth(90));
+            statusBadge.normal.textColor = QuestStatusIcons.GetColor("claimed");
+            GUILayout.Label($"{QuestStatusIcons.GetIcon("claimed")} claimed", statusBadge, GUILayout.ExpandWidth(false));
             EditorGUILayout.EndHorizontal();
 
             if (!this.expandedClaims[claimKey])

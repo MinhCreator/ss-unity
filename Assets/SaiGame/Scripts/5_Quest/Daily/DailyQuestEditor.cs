@@ -751,6 +751,7 @@ namespace SaiGame.Services
                 {
                     this.startingQuestId = null;
                     Debug.Log($"[DailyQuestEditor] Quest started: id={response.id}, status={response.status}");
+                    this.ApplyEntryStatus(questDefinitionId, response.status);
                     Repaint();
                 },
                 onError: error =>
@@ -808,6 +809,8 @@ namespace SaiGame.Services
                 {
                     this.claimingQuestId = null;
                     Debug.Log($"[DailyQuestEditor] Quest claimed: id={response.id}, claimed_at={response.claimed_at}");
+                    // Claim response has no status field — claimed_at is present, so the quest is "claimed".
+                    this.ApplyEntryStatus(questDefinitionId, "claimed");
                     Repaint();
                 },
                 onError: error =>
@@ -945,6 +948,29 @@ namespace SaiGame.Services
         }
 
         // ── Check API → entry sync ────────────────────────────────────────────
+
+        /// <summary>
+        /// Writes the new status back onto the matching <see cref="DailyQuestEntryData"/>
+        /// in <c>CurrentTodayQuestResponse</c> so the inspector pill updates immediately
+        /// after Start / Claim without waiting for a Check round-trip.
+        /// </summary>
+        private void ApplyEntryStatus(string questDefinitionId, string newStatus)
+        {
+            if (string.IsNullOrEmpty(questDefinitionId) || string.IsNullOrEmpty(newStatus)) return;
+
+            TodayQuestResponse today = this.dailyQuest?.CurrentTodayQuestResponse;
+            if (today?.entries == null) return;
+
+            foreach (DailyQuestEntryData entry in today.entries)
+            {
+                string entryQuestId = entry?.quest?.id ?? entry?.assignment?.quest_definition_id;
+                if (entryQuestId == questDefinitionId)
+                {
+                    entry.status = newStatus;
+                    break;
+                }
+            }
+        }
 
         /// <summary>
         /// Updates the matching entry in CurrentTodayQuestResponse with fresh data from a Check call.
