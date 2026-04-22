@@ -30,6 +30,12 @@ namespace SaiGame.Services
         [SerializeField] protected string selectedBoardKey = "";
         [SerializeField] protected int topN = 10;
 
+        // Dictionary to store top rankings per board (keyed by board id)
+        private System.Collections.Generic.Dictionary<string, LeaderboardRankingsResponse> boardTopRankings = new System.Collections.Generic.Dictionary<string, LeaderboardRankingsResponse>();
+
+        // Dictionary to store my rank per board (keyed by board id)
+        private System.Collections.Generic.Dictionary<string, LeaderboardLocalRankingResponse> boardMyRanks = new System.Collections.Generic.Dictionary<string, LeaderboardLocalRankingResponse>();
+
         public LeaderboardBoardsResponse CurrentBoards => this.currentBoards;
         public bool HasBoards => this.currentBoards != null && this.currentBoards.boards != null && this.currentBoards.boards.Length > 0;
         public LeaderboardRankingsResponse CurrentTopRankings => this.currentTopRankings;
@@ -203,6 +209,8 @@ namespace SaiGame.Services
                             ? wrapped.board
                             : JsonUtility.FromJson<LeaderboardBoard>(response);
 
+                        this.UpsertBoard(board);
+
                         if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
                             Debug.Log($"[Leaderboard] Got board: {board?.name} (key: {board?.board_key})");
 
@@ -271,6 +279,9 @@ namespace SaiGame.Services
                     {
                         LeaderboardRankingsResponse parsed = JsonUtility.FromJson<LeaderboardRankingsResponse>(response);
                         this.currentTopRankings = parsed;
+                        
+                        // Store rankings per board
+                        this.boardTopRankings[boardId] = parsed;
 
                         if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
                             Debug.Log($"[Leaderboard] Got {parsed.entries?.Length ?? 0} entries (total: {parsed.total}) for board: {boardId}");
@@ -340,6 +351,9 @@ namespace SaiGame.Services
                         LeaderboardLocalRankingResponse parsed = JsonUtility.FromJson<LeaderboardLocalRankingResponse>(response);
                         this.currentMyRank = parsed;
 
+                        // Store my rank per board
+                        this.boardMyRanks[boardId] = parsed;
+
                         if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
                             Debug.Log($"[Leaderboard] My rank for board {boardId}: rank #{parsed.rank}, score: {parsed.score}");
 
@@ -386,6 +400,43 @@ namespace SaiGame.Services
             {
                 boards = new LeaderboardBoard[0]
             };
+            this.ClearBoardTopRankings();
+        }
+
+        private void UpsertBoard(LeaderboardBoard board)
+        {
+            if (board == null || string.IsNullOrEmpty(board.id))
+                return;
+
+            if (this.currentBoards == null)
+                this.currentBoards = new LeaderboardBoardsResponse();
+
+            if (this.currentBoards.boards == null || this.currentBoards.boards.Length == 0)
+            {
+                this.currentBoards.boards = new[] { board };
+                if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
+                    Debug.Log($"[Leaderboard] UpsertBoard: Created new boards array with board {board.name}");
+                return;
+            }
+
+            for (int i = 0; i < this.currentBoards.boards.Length; i++)
+            {
+                if (this.currentBoards.boards[i] != null && this.currentBoards.boards[i].id == board.id)
+                {
+                    this.currentBoards.boards[i] = board;
+                    if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
+                        Debug.Log($"[Leaderboard] UpsertBoard: Updated board at index {i}: {board.name}");
+                    return;
+                }
+            }
+
+            int oldLength = this.currentBoards.boards.Length;
+            LeaderboardBoard[] nextBoards = new LeaderboardBoard[oldLength + 1];
+            Array.Copy(this.currentBoards.boards, nextBoards, oldLength);
+            nextBoards[oldLength] = board;
+            this.currentBoards.boards = nextBoards;
+            if (SaiServer.Instance != null && SaiServer.Instance.ShowDebug)
+                Debug.Log($"[Leaderboard] UpsertBoard: Added new board at end: {board.name}");
         }
 
         public LeaderboardBoard GetBoardByKey(string boardKey)
@@ -444,6 +495,36 @@ namespace SaiGame.Services
         public int GetTopN()
         {
             return this.topN;
+        }
+
+        public LeaderboardRankingsResponse GetBoardTopRankings(string boardId)
+        {
+            if (string.IsNullOrEmpty(boardId) || this.boardTopRankings == null)
+                return null;
+
+            if (this.boardTopRankings.ContainsKey(boardId))
+                return this.boardTopRankings[boardId];
+
+            return null;
+        }
+
+        public LeaderboardLocalRankingResponse GetBoardMyRank(string boardId)
+        {
+            if (string.IsNullOrEmpty(boardId) || this.boardMyRanks == null)
+                return null;
+
+            if (this.boardMyRanks.ContainsKey(boardId))
+                return this.boardMyRanks[boardId];
+
+            return null;
+        }
+
+        private void ClearBoardTopRankings()
+        {
+            if (this.boardTopRankings != null)
+                this.boardTopRankings.Clear();
+            if (this.boardMyRanks != null)
+                this.boardMyRanks.Clear();
         }
     }
 }
