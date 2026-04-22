@@ -53,11 +53,6 @@ namespace SaiGame.Services
 
             EditorGUILayout.Space(5);
 
-            if (!Application.isPlaying)
-            {
-                EditorGUILayout.HelpBox("Vào Play mode để thực hiện login qua Google backend.", MessageType.Info);
-            }
-
             using (new EditorGUI.DisabledScope(!Application.isPlaying))
             {
                 EditorGUILayout.BeginHorizontal();
@@ -98,6 +93,15 @@ namespace SaiGame.Services
 
                 EditorGUILayout.Space(5);
 
+                EditorGUILayout.BeginHorizontal();
+
+                GUI.backgroundColor = new Color(0.4f, 0.7f, 1f);
+                if (GUILayout.Button("Set Token To SaiAuth", GUILayout.Height(25)))
+                {
+                    login.SetTokenToSaiAuth();
+                }
+                GUI.backgroundColor = Color.white;
+
                 GUI.backgroundColor = new Color(0.5f, 0.8f, 1f);
                 if (GUILayout.Button("Open Auth URL", GUILayout.Height(25)))
                 {
@@ -112,6 +116,8 @@ namespace SaiGame.Services
                     }
                 }
                 GUI.backgroundColor = Color.white;
+
+                EditorGUILayout.EndHorizontal();
             }
         }
     }

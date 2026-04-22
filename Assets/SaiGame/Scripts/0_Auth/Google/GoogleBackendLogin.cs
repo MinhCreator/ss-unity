@@ -25,10 +25,10 @@ namespace SaiGame.Services
         [SerializeField] protected bool isLoggingIn;
 
         [Header("Session Settings")]
-        [Tooltip("Hạn chót tổng cho toàn bộ flow login.")]
+        [Tooltip("Overall deadline for the whole login flow.")]
         [SerializeField] protected float maxLoginDurationSeconds = 300f;
 
-        [Tooltip("Khoảng cách poll khi server không trả poll_interval_seconds.")]
+        [Tooltip("Poll interval fallback when server does not return poll_interval_seconds.")]
         [SerializeField] protected int defaultPollIntervalSeconds = 2;
 
         private const string ENDPOINT_SESSION = "/api/v1/client/auth/google/session";
@@ -231,8 +231,6 @@ namespace SaiGame.Services
                 expires_in    = resp.expires_in,
             };
 
-            SaiServer.Instance.SetLoginData(result.access_token, result.refresh_token, result.expires_in, result.user);
-
             this.accessToken = result.access_token;
             this.refreshToken = result.refresh_token;
             this.expiresIn = result.expires_in;
@@ -278,15 +276,27 @@ namespace SaiGame.Services
             this.userData = user;
         }
 
+        public void SetTokenToSaiAuth()
+        {
+            if (SaiServer.Instance != null && SaiServer.Instance.ShowButtonsLog)
+                Debug.Log("<color=#DB4437><b>[GoogleBackendLogin] ► Set Token To SaiAuth</b></color>", gameObject);
+
+            if (SaiServer.Instance == null)
+            {
+                Debug.LogWarning("[GoogleBackendLogin] SaiServer not found!");
+                return;
+            }
+
+            SaiServer.Instance.SetLoginData(this.accessToken, this.refreshToken, this.expiresIn, this.userData);
+
+            if (SaiServer.Instance.ShowDebug)
+                Debug.Log($"<color=#DB4437>[GoogleBackendLogin] Pushed token to SaiAuth (master) | access expires in {this.expiresIn}s</color>");
+        }
+
         public void ClearAuthData()
         {
             if (SaiServer.Instance != null && SaiServer.Instance.ShowButtonsLog)
                 Debug.Log("<color=#FF6666><b>[GoogleBackendLogin] ► Clear Auth Data</b></color>", gameObject);
-
-            if (SaiServer.Instance != null)
-            {
-                SaiServer.Instance.SetLoginData("", "", 0, null);
-            }
 
             this.accessToken = "";
             this.refreshToken = "";
