@@ -7,15 +7,22 @@ namespace SaiGame.Services
     [CustomEditor(typeof(PlayerEvent))]
     public class PlayerEventEditor : Editor
     {
+        private const string SessionIdInfo =
+            "Why Session ID:\n" +
+            "• Groups events of the same play session, separating them from other sessions of the same user.\n" +
+            "• Enables per-session analytics (duration, action sequence, drop-off) that user_id alone cannot.\n" +
+            "• Lets us replay the exact flow of one play session when debugging.\n" +
+            "• Generated fresh on each login, cleared on logout — avoids mixing sessions across logins or devices.";
+
         private SerializedProperty sessionId;
         private SerializedProperty eventType;
-        // private SerializedProperty eventDataJson; // tạm ẩn — chưa dùng
+        private SerializedProperty eventDataJson;
 
         private void OnEnable()
         {
             this.sessionId = serializedObject.FindProperty("sessionId");
             this.eventType = serializedObject.FindProperty("eventType");
-            // this.eventDataJson = serializedObject.FindProperty("eventDataJson"); // tạm ẩn — chưa dùng
+            this.eventDataJson = serializedObject.FindProperty("eventDataJson");
         }
 
         public override void OnInspectorGUI()
@@ -24,12 +31,8 @@ namespace SaiGame.Services
 
             PlayerEvent playerEvent = (PlayerEvent)target;
 
+            EditorGUILayout.HelpBox(SessionIdInfo, MessageType.Info);
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Player Event Configuration", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
-
-            // Session Settings
-            EditorGUILayout.LabelField("Session Settings", EditorStyles.boldLabel);
 
             // Draw label + field + New button all on one row
             Rect sessionRow = EditorGUILayout.GetControlRect();
@@ -56,11 +59,8 @@ namespace SaiGame.Services
             EditorGUILayout.Space();
 
             // Event Settings
-            EditorGUILayout.LabelField("Event Settings", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(this.eventType, new GUIContent("Event Type", "The type of event to track (e.g. join_game, start_level, quit_game)"));
 
-            // --- Event Data (JSON) UI tạm ẩn — chưa dùng đến. Không xóa để dễ khôi phục sau. ---
-            /*
             EditorGUILayout.Space(4);
 
             // Event Data JSON textarea
@@ -90,7 +90,6 @@ namespace SaiGame.Services
             }
             GUI.backgroundColor = Color.white;
             EditorGUILayout.EndHorizontal();
-            */
 
             serializedObject.ApplyModifiedProperties();
 
