@@ -170,7 +170,7 @@ namespace SaiGame.Services
                 GUI.backgroundColor = Color.yellow;
                 if (GUILayout.Button("Sync with PlayerItem", GUILayout.Height(30)))
                 {
-                    PlayerItem pItem = FindObjectOfType<PlayerItem>();
+                    PlayerItem pItem = FindFirstObjectByType<PlayerItem>();
                     if (pItem != null)
                     {
                         pItem.GetItems(null, null, null,
@@ -453,7 +453,7 @@ namespace SaiGame.Services
 
             if (preset.slots != null && preset.slots.Length > 0)
             {
-                PlayerItem pItemInfo = FindObjectOfType<PlayerItem>();
+                PlayerItem pItemInfo = FindFirstObjectByType<PlayerItem>();
                 var sortedSlots = System.Linq.Enumerable.OrderBy(preset.slots, s => s.slot_index).ToArray();
 
                 foreach (var slot in sortedSlots)
@@ -504,6 +504,13 @@ namespace SaiGame.Services
                         rarityBadge.alignment = TextAnchor.MiddleRight;
                         EditorGUILayout.LabelField(itemInfo.definition.rarity.ToUpper(), rarityBadge, GUILayout.MinWidth(70));
                     }
+
+                    GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
+                    if (GUILayout.Button("✕ Remove", GUILayout.Width(80)))
+                    {
+                        this.InvokeRemoveItemFromPreset(preset, slot.slot_index);
+                    }
+                    GUI.backgroundColor = Color.white;
                     EditorGUILayout.EndHorizontal();
 
                     if (this.presetSlotFoldouts[slotKey])
@@ -554,7 +561,7 @@ namespace SaiGame.Services
             addHeaderStyle.normal.textColor = new Color(0.4f, 1f, 0.6f);
             EditorGUILayout.LabelField("➕ ADD ITEM TO SLOT", addHeaderStyle);
 
-            PlayerItem playerItem = FindObjectOfType<PlayerItem>();
+            PlayerItem playerItem = FindFirstObjectByType<PlayerItem>();
             if (playerItem == null || playerItem.CurrentInventory == null || playerItem.CurrentInventory.items == null || playerItem.CurrentInventory.items.Length == 0)
             {
                 EditorGUILayout.HelpBox("No PlayerItem or Inventory data found. Click 'Sync Player Inventory' under Utility Actions first.", MessageType.Warning);
@@ -622,6 +629,42 @@ namespace SaiGame.Services
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(4);
+        }
+
+        private void InvokeRemoveItemFromPreset(PresetData preset, int slotIndex)
+        {
+            if (!EditorUtility.DisplayDialog(
+                "Remove Item",
+                $"Remove item from slot {slotIndex} of preset \"{(string.IsNullOrEmpty(preset.name) ? preset.id : preset.name)}\"?",
+                "Remove",
+                "Cancel"))
+                return;
+
+            this.itemPreset.RemoveItemFromPreset(preset.id, slotIndex,
+                onSuccess: updatedPreset =>
+                {
+                    if (SaiServer.Instance == null || SaiServer.Instance.ShowDebug)
+                        Debug.Log($"[Editor] Item removed from preset {preset.id} slot {slotIndex}");
+
+                    if (this.itemPreset.CurrentPresets != null && this.itemPreset.CurrentPresets.containers != null)
+                    {
+                        for (int i = 0; i < this.itemPreset.CurrentPresets.containers.Length; i++)
+                        {
+                            if (this.itemPreset.CurrentPresets.containers[i].id == updatedPreset.id)
+                            {
+                                this.itemPreset.CurrentPresets.containers[i] = updatedPreset;
+                                break;
+                            }
+                        }
+                    }
+                    Repaint();
+                },
+                onError: err =>
+                {
+                    if (SaiServer.Instance == null || SaiServer.Instance.ShowDebug)
+                        Debug.LogError($"[Editor] Failed to remove item from slot {slotIndex}: {err}");
+                }
+            );
         }
 
         private void DrawPresetTypeBanner(string presetType, bool isTemp)
